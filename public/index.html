@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vesion Store | متجر المنتجات الرقمية</title>
+<link rel="icon" type="image/jpeg" href="img/minichat.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header id="top">
+  <nav class="wrap">
+    <a href="#top" class="logo">Vesion <span>Store</span></a>
+    <button class="nav-toggle" id="navToggle" aria-label="القائمة" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#products">المنتجات</a></li>
+      <li><a href="#features">المزايا</a></li>
+      <li><a href="#faq">الأسئلة</a></li>
+    </ul>
+    <a href="#products" class="btn btn-primary">اشتر الآن</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-grid wrap">
+      <div class="hero-media">
+        <img class="hero-icon" src="img/minichat.jpg" alt="أيقونة تطبيق mini chat" width="1024" height="1024" />
+      </div>
+      <div class="hero-copy">
+        <span class="badge-eyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.02 2.81a1 1 0 0 1 1.96 0l1.05 5.56a2 2 0 0 0 1.6 1.6l5.55 1.05a1 1 0 0 1 0 1.96l-5.55 1.05a2 2 0 0 0-1.6 1.6l-1.05 5.56a1 1 0 0 1-1.96 0l-1.05-5.56a2 2 0 0 0-1.6-1.6l-5.55-1.05a1 1 0 0 1 0-1.96l5.55-1.05a2 2 0 0 0 1.6-1.6z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>
+          منتجات رقمية من تطويرنا الخاص
+        </span>
+        <h1><span class="accent">mini chat</span><br>تطبيق دردشة تملكه بالكامل</h1>
+        <p>اشتراك ميني تشات بلس معدل للايفون فقط، دفعة واحدة وتحديثات مدى الحياة.</p>
+        <a href="#products" class="btn btn-primary">ابدأ الشراء</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="products">
+    <div class="section-head">
+      <h2>الباقات</h2>
+      <p>دفعة واحدة، تحميل فوري، بدون اشتراكات مخفية.</p>
+    </div>
+    <div class="pricing-card">
+      <span class="pill">الأكثر طلباً</span>
+      <h3>Mini Chat - Pro</h3>
+      <div class="price-row">
+        <span class="label">دفعة واحدة</span>
+        <span class="amount">$19.99</span>
+      </div>
+      <ul class="feature-list">
+        <li><span>فك حظر نهائي وعدد لا نهائي</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></li>
+        <li><span>تشغيل فيديو بدل وجهك</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></li>
+        <li><span>ماتش بنات 100%</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></li>
+        <li><span>تحديثات مدى الحياة</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></li>
+        <li><span>فتح جميع الدول</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></li>
+      </ul>
+      <button class="btn btn-primary btn-block" id="buyBtn">شراء</button>
+      <p class="checkout-error" id="checkoutError">صار في خطأ، جرب مرة ثانية.</p>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="section-head">
+      <h2>ليش Vesion؟</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <h3>تسليم فوري</h3>
+        <p>رابط التحميل يوصلك مباشرة بعد الدفع.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>آمن ونظيف</h3>
+        <p>المتجر رقم 1 في الشرق الأوسط في سرعة ودقة الطلبات.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.1-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.9-4.5-9-10-9z"/></svg></div>
+        <h3>قابل للتخصيص</h3>
+        <p>ألوان وثيمات وشعار خاص فيك بدقائق.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <h3>خفيف وسريع</h3>
+        <p>واجهة سريعة تعمل على أي جهاز بدون تعقيد.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="section-head">
+      <h2>أسئلة شائعة</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item open">
+        <button class="faq-question">كيف بستلم المنتج بعد الدفع؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>بعد إتمام الدفع بتوصلك رسالة فيها رابط التحميل ومفتاح الرخصة مباشرة.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">هل بقدر أعدّل على الكود؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>أكيد، الكود المصدري إلك بالكامل وفيك تعدّل عليه أو تضيف مزايا حسب احتياجك.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">شو طرق الدفع المتاحة؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>بنقبل بطاقات الفيزا والماستركارد والدفع عبر أبل باي وباي بال.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">في استرجاع؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>فيك تسترجع فلوسك خلال 7 أيام من الشراء إذا ما كنت راضي عن المنتج.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>© 2026 Vesion Store — جميع الحقوق محفوظة.</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
