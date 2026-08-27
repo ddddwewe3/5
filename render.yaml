@@ -1,0 +1,16 @@
+# Render Blueprint — https://render.com
+# Zet de repo online via Render en dit bestand configureert de service automatisch.
+services:
+  - type: web
+    name: vesion-store
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      # Vul deze in via het Render-dashboard (Environment). sync:false = niet in git.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
