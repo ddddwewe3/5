@@ -107,7 +107,7 @@ function encoderArgs({ fast = false } = {}) {
       args = ['-c:v', 'h264_videotoolbox', '-q:v', '65'];
       break;
     default:
-      args = ['-c:v', 'libx264', '-preset', fast ? 'veryfast' : 'fast', '-crf', '18'];
+      args = ['-c:v', 'libx264', '-preset', fast ? 'superfast' : 'veryfast', '-crf', '18'];
   }
   return [...args, '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
 }
@@ -291,16 +291,18 @@ async function encodeSequence(dir, pattern, output, { fps, width, height, signal
   return output;
 }
 
-/** Concatenates clips that share size/fps. Later segments drop their first frame (it repeats the previous last frame). */
-async function concatSegments(inputs, output, { signal, onProgress, dropFirstFrame = true, totalDuration }) {
-  if (inputs.length === 1) {
-    fs.copyFileSync(inputs[0], output);
-    return output;
-  }
-  const parts = inputs.map((_, i) => (i > 0 && dropFirstFrame
-    ? `[${i}:v]trim=start_frame=1,setpts=PTS-STARTPTS[s${i}]`
-    : `[${i}:v]setpts=PTS-STARTPTS[s${i}]`));
-  const graph = `${parts.join(';')};${inputs.map((_, i) => `[s${i}]`).join('')}concat=n=${inputs.length}:v=1:a=0,format=yuv420p[v]`;
+/**
+ * Final encode of generated segments in a single FFmpeg pass: joins segments (later segments drop
+ * their first frame, which repeats the previous segment's last frame), crops to the exact aspect
+ * ratio, optionally upscales (lanczos) and encodes H.264 with the fastest available encoder.
+ */
+async function finalizeSegments(inputs, output, { width, height, fps, signal, onProgress, totalDuration }) {
+  await requireFfmpeg();
+  const parts = inputs.map((_, i) => `[${i}:v]${i > 0 ? 'trim=start_frame=1,' : ''}setpts=PTS-STARTPTS,fps=${fps}[s${i}]`);
+  const join = inputs.length > 1
+    ? `${inputs.map((_, i) => `[s${i}]`).join('')}concat=n=${inputs.length}:v=1:a=0[j]`
+    : '[s0]null[j]';
+  const graph = `${parts.join(';')};${join};${fitFilter(width, height, 'crop', 'j', 'f')};[f]format=yuv420p[v]`;
   await run([...inputs.flatMap(f => ['-i', f]), '-filter_complex', graph, '-map', '[v]', ...encoderArgs(), '-an', output],
     { signal, durationSec: totalDuration, onProgress });
   return output;
@@ -308,5 +310,5 @@ async function concatSegments(inputs, output, { signal, onProgress, dropFirstFra
 
 module.exports = {
   bin, detect, requireFfmpeg, encoderArgs, run, probe, fitFilter, outputSize, even,
-  extractFrame, thumbnail, normalize, encodeSequence, concatSegments,
+  extractFrame, thumbnail, normalize, encodeSequence, finalizeSegments,
 };

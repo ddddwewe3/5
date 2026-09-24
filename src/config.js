@@ -34,7 +34,7 @@ const defaults = {
   ollamaUrl: env('OLLAMA_URL', '').replace(/\/+$/, ''),
   ollamaModel: env('OLLAMA_MODEL', 'llama3.2'),
   enhancePrompts: true,
-  defaultQuality: 'balanced', // fast | balanced | quality
+  defaultQuality: 'fast', // fast | balanced | quality — fast = lowest latency (reduced resolution, upscaled by FFmpeg)
   upscaleOutput: true, // upscale final output to 720p-class resolution with FFmpeg (lanczos)
   hardwareEncoder: 'auto', // auto | off  (NVENC / QuickSync / AMF when usable)
   ttsEngine: env('TTS_ENGINE', 'auto'), // auto | piper | sapi | espeak | say

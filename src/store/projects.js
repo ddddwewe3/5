@@ -100,7 +100,9 @@ function summary(p) {
   const finalRender = (p.renders || []).find(r => r.id === p.finalRenderId && r.status === 'complete');
   const running = scenes.some(s => (s.takes || []).some(t => ['queued', 'running'].includes(t.status))) ||
     (p.renders || []).some(r => ['queued', 'running'].includes(r.status));
-  const failed = !running && scenes.length > 0 && scenes.every(s => (s.takes || []).every(t => t.status === 'failed' || t.status === 'cancelled'));
+  const allTakes = scenes.flatMap(s => s.takes || []);
+  const failed = !running && allTakes.length > 0 && allTakes.every(t => t.status === 'failed' || t.status === 'cancelled');
+  const cancelled = failed && allTakes.every(t => t.status === 'cancelled');
   return {
     id: p.id,
     name: p.name,
@@ -112,7 +114,7 @@ function summary(p) {
     sceneCount: scenes.length,
     thumbnail: (finalRender && finalRender.thumbnail) || (firstTake && firstTake.thumbnail) || null,
     finalVideo: finalRender ? finalRender.video : null,
-    status: running ? 'running' : failed ? 'failed' : 'ready',
+    status: running ? 'running' : cancelled ? 'cancelled' : failed ? 'failed' : 'ready',
   };
 }
 
@@ -157,12 +159,12 @@ function create(fields) {
 }
 
 /** Mutate a project and schedule a save + live update. `mutator` may return a value. */
-function update(id, mutator, { immediate = false } = {}) {
+function update(id, mutator, { immediate = false, silent = false } = {}) {
   const project = get(id);
   const result = mutator(project);
   project.updatedAt = new Date().toISOString();
   scheduleSave(id, immediate);
-  events.broadcast('project', { id, summary: summary(project) });
+  if (!silent) events.broadcast('project', { id, summary: summary(project) });
   return result;
 }
 

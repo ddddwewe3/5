@@ -1,0 +1,103 @@
+'use strict';
+
+/** Ready-made starting points. "Use template" pre-fills the Create form; nothing is generated until Generate is pressed. */
+const TEMPLATES = [
+  {
+    id: 'product-hero', category: 'Product', title: 'Product hero shot', icon: 'package',
+    description: 'Premium rotating product showcase on a clean studio backdrop.',
+    prompt: 'A sleek product rotating slowly on a glossy pedestal, soft studio reflections, premium commercial look',
+    mode: 'i2v', aspectRatio: '9:16', duration: 5,
+    voiceover: 'Meet the product that changes everything. Designed for you.',
+    extendPrompt: 'the camera pushes in to a close-up of the product details',
+  },
+  {
+    id: 'unboxing', category: 'Product', title: 'Unboxing reveal', icon: 'gift',
+    description: 'Hands open a box and reveal the product.',
+    prompt: 'Close-up of hands slowly opening a minimalist box on a wooden table, revealing a new product inside, soft window light',
+    mode: 't2v', aspectRatio: '9:16', duration: 5,
+    voiceover: 'Unbox something special.',
+    extendPrompt: 'the hands lift the product out of the box and turn it toward the camera',
+  },
+  {
+    id: 'talking-presenter', category: 'People', title: 'Talking presenter', icon: 'user',
+    description: 'A friendly presenter speaking to camera — add your own voice-over.',
+    prompt: 'A friendly young woman talking to the camera in a bright modern office',
+    mode: 't2v', aspectRatio: '9:16', duration: 5,
+    voiceover: 'Hi! Let me show you something that will save you hours every week.',
+    extendPrompt: 'she gestures toward a laptop on the desk while smiling',
+  },
+  {
+    id: 'ugc-review', category: 'People', title: 'UGC style review', icon: 'smartphone',
+    description: 'Handheld selfie-style review, like social media creators.',
+    prompt: 'A young man holding a product and talking excitedly to his phone camera in his living room, handheld selfie style, UGC',
+    mode: 't2v', aspectRatio: '9:16', duration: 5,
+    voiceover: 'Okay, I have been using this for a week and honestly, I love it.',
+    extendPrompt: 'he shows the product closer to the camera and nods',
+  },
+  {
+    id: 'food-closeup', category: 'Food', title: 'Food close-up', icon: 'utensils',
+    description: 'Mouth-watering macro food shot with steam.',
+    prompt: 'A juicy gourmet burger on a rustic wooden board with steam rising, melted cheese dripping',
+    mode: 't2v', aspectRatio: '1:1', duration: 5,
+    voiceover: 'Fresh. Hot. Made just for you.',
+    extendPrompt: 'a hand reaches in and lifts the burger',
+  },
+  {
+    id: 'coffee-morning', category: 'Food', title: 'Morning coffee', icon: 'coffee',
+    description: 'Cozy café pour-over with warm morning light.',
+    prompt: 'Coffee being poured into a ceramic cup in a cozy café, warm morning sunlight through the window',
+    mode: 't2v', aspectRatio: '16:9', duration: 5,
+    voiceover: 'Start your morning right.',
+    extendPrompt: 'steam curls up from the cup as the camera slowly pulls back',
+  },
+  {
+    id: 'real-estate', category: 'Business', title: 'Real-estate walkthrough', icon: 'home',
+    description: 'Smooth gimbal walkthrough of a bright modern interior.',
+    prompt: 'Smooth gimbal walkthrough of a bright modern living room with large windows and minimalist furniture',
+    mode: 't2v', aspectRatio: '16:9', duration: 8,
+    voiceover: 'Welcome home. Bright, spacious and ready for you.',
+    extendPrompt: 'the camera glides into the open kitchen',
+  },
+  {
+    id: 'app-promo', category: 'Business', title: 'App promo', icon: 'layout',
+    description: 'Hands using a phone app in a stylish setting.',
+    prompt: 'Close-up of hands using a smartphone app on a café table, soft bokeh background, modern lifestyle',
+    mode: 't2v', aspectRatio: '9:16', duration: 5,
+    voiceover: 'Everything you need, right in your pocket.',
+    extendPrompt: 'the person looks up from the phone and smiles',
+  },
+  {
+    id: 'fashion', category: 'Lifestyle', title: 'Fashion lookbook', icon: 'shirt',
+    description: 'Model walking toward the camera on a city street.',
+    prompt: 'A fashion model walking confidently toward the camera on a city street at golden hour, wearing a stylish outfit',
+    mode: 't2v', aspectRatio: '9:16', duration: 5,
+    voiceover: 'The new collection. Out now.',
+    extendPrompt: 'she stops, turns and looks over her shoulder',
+  },
+  {
+    id: 'travel-drone', category: 'Travel', title: 'Travel drone shot', icon: 'mountain',
+    description: 'Sweeping aerial shot over a dramatic landscape.',
+    prompt: 'Aerial drone shot flying over turquoise water and white sand beach with palm trees',
+    mode: 't2v', aspectRatio: '16:9', duration: 5,
+    voiceover: 'Your next adventure starts here.',
+    extendPrompt: 'the drone rises to reveal the whole coastline at sunset',
+  },
+  {
+    id: 'car-commercial', category: 'Lifestyle', title: 'Car commercial', icon: 'car',
+    description: 'Dynamic tracking shot of a car on a scenic road.',
+    prompt: 'A sleek black sports car driving on a winding mountain road at sunset',
+    mode: 't2v', aspectRatio: '16:9', duration: 5,
+    voiceover: 'Built for the drive.',
+    extendPrompt: 'the car accelerates through a tunnel, lights streaking past',
+  },
+  {
+    id: 'abstract-brand', category: 'Creative', title: 'Abstract brand loop', icon: 'sparkles',
+    description: 'Flowing liquid colors — great as a background or intro.',
+    prompt: 'Abstract flowing liquid colors in purple and orange swirling slowly, glossy fluid simulation',
+    mode: 't2v', aspectRatio: '1:1', duration: 5,
+    voiceover: '',
+    extendPrompt: 'the colors form a glowing sphere in the center',
+  },
+];
+
+module.exports = { TEMPLATES };
