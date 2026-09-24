@@ -190,6 +190,7 @@ export async function render(main) {
       if (res.promptNote) toast(res.promptNote, { type: 'warn', timeout: 9000 });
       state.prompt = '';
       state.image = null;
+      state.mode = 't2v';
       saveDraft();
       location.hash = `#/project/${res.projectId}`;
     } catch (err) {

@@ -17,6 +17,13 @@ const log = logger.createLogger('server');
 
 projects.loadAll();
 
+// Temp files (voice previews, partial uploads) older than a day are safe to remove.
+const fs = require('fs');
+for (const f of fs.readdirSync(config.TMP_DIR)) {
+  const p = path.join(config.TMP_DIR, f);
+  try { if (Date.now() - fs.statSync(p).mtimeMs > 24 * 3600 * 1000) fs.rmSync(p, { force: true, recursive: true }); } catch { /* ignore */ }
+}
+
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '2mb' }));

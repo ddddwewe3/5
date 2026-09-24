@@ -108,7 +108,7 @@ export async function render(main, { id, query }) {
     if (ui.view === 'final') {
       const r = selectedRender();
       if (r) return { kind: 'render', rec: live(r) };
-      ui.view = 'scene';
+      // No render record (yet): show the scene without changing the selected view.
     }
     const scene = selectedScene();
     return { kind: 'take', scene, rec: live(activeTake(scene)) };
@@ -688,6 +688,11 @@ export async function render(main, { id, query }) {
     const res = await api.render(body);
     ui.view = 'final';
     ui.renderId = res.renderId;
+    // Show the render immediately; live job events may arrive before the project is re-fetched.
+    if (!project.renders.some(r => r.id === res.renderId)) {
+      project.renders.push({ id: res.renderId, jobId: res.jobId, status: 'queued', stage: 'queued', progress: 0, createdAt: new Date().toISOString() });
+    }
+    renderAll();
     toast('Rendering final video…');
     await refetch();
   }

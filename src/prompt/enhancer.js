@@ -37,7 +37,8 @@ const LIGHT_MAP = [
 const STYLE_TERMS = /\b(anime|cartoon|3d render|3d animation|pixar|claymation|watercolor|oil painting|noir|black and white|vintage|retro|cyberpunk|steampunk|documentary|ugc|film grain|vhs|8mm|16mm|35mm|surreal|fantasy|sci-fi|minimalist|stop motion|pixel art|illustration|comic)\b/i;
 const INDOOR = /\b(room|office|kitchen|studio|bedroom|living room|home|house|apartment|café|cafe|restaurant|shop|store|gym|hall|classroom|bar|lobby|indoors|inside)\b/i;
 const NIGHT = /\b(night|neon|dark|moonlight|midnight|evening)\b/i;
-const PREPOSITION = /\s(?:,\s*)?\b(in|inside|at|on|near|by|under|through|across|over|within|against|beside|along|surrounded by|in front of)\b\s+/i;
+// A location phrase ("in a room"), but not one that points at a pronoun ("light glides across it").
+const PREPOSITION = /\s(?:,\s*)?\b(in|inside|at|on|near|by|under|through|across|over|within|against|beside|along|surrounded by|in front of)\b\s+(?!(?:it|him|her|them|me|us|you|itself|themselves)\b)/i;
 
 const ENRICH_ENV = [
   [/^(in|inside) (a|an|the) room$/i, 'in a cozy modern room with warm tones, tasteful decor and a softly blurred background'],
