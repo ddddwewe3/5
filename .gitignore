@@ -1,4 +1,10 @@
 node_modules/
 .env
-data/orders.json
+.venv/
+__pycache__/
+*.pyc
+data/
+logs/
+models/
+ComfyUI/
 .playwright-mcp/

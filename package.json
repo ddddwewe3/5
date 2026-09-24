@@ -1,20 +1,22 @@
 {
-  "name": "vesion-store-clone",
+  "name": "openreel-studio",
   "version": "1.0.0",
   "private": true,
-  "description": "Leerproject: werkende webshop-clone met Stripe Checkout in test-mode",
+  "description": "Free, self-hosted AI video generation studio (ComfyUI / local open-source models + FFmpeg)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "doctor": "node scripts/doctor.js",
+    "test:e2e": "node scripts/e2e-test.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18.17"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "nodemailer": "^9.0.5",
-    "stripe": "^16.8.0"
+    "express": "^4.21.2",
+    "multer": "^2.0.2",
+    "ws": "^8.18.0"
   }
 }
