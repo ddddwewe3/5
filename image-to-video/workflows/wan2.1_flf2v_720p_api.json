@@ -1,0 +1,235 @@
+{
+  "_comment": "Wan2.1 first-last-frame to video (two images: start and end), ComfyUI API format.",
+  "2": {
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Wan2.1 FLF2V 720p"
+    },
+    "inputs": {
+      "unet_name": "wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "1": {
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Text encoder (umt5)"
+    },
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Wan VAE"
+    },
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "CLIPVisionLoader",
+    "_meta": {
+      "title": "CLIP Vision H"
+    },
+    "inputs": {
+      "clip_name": "clip_vision_h.safetensors"
+    }
+  },
+  "5": {
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Start image"
+    },
+    "inputs": {
+      "image": "{{IMAGE_1}}"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive prompt"
+    },
+    "inputs": {
+      "text": "{{PROMPT}}",
+      "clip": [
+        "1",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative prompt"
+    },
+    "inputs": {
+      "text": "{{NEGATIVE_PROMPT}}",
+      "clip": [
+        "1",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "CLIPVisionEncode",
+    "_meta": {
+      "title": "Encode start image"
+    },
+    "inputs": {
+      "clip_vision": [
+        "4",
+        0
+      ],
+      "image": [
+        "5",
+        0
+      ],
+      "crop": "none"
+    }
+  },
+  "10": {
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "Model sampling shift"
+    },
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "shift": 8.0
+    }
+  },
+  "11": {
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Sampler"
+    },
+    "inputs": {
+      "model": [
+        "10",
+        0
+      ],
+      "seed": "{{SEED}}",
+      "steps": 20,
+      "cfg": 6.0,
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "positive": [
+        "9",
+        0
+      ],
+      "negative": [
+        "9",
+        1
+      ],
+      "latent_image": [
+        "9",
+        2
+      ],
+      "denoise": 1.0
+    }
+  },
+  "12": {
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "Decode"
+    },
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "13": {
+    "class_type": "SaveAnimatedWEBP",
+    "_meta": {
+      "title": "Save video"
+    },
+    "inputs": {
+      "images": [
+        "12",
+        0
+      ],
+      "filename_prefix": "{{FILENAME_PREFIX}}",
+      "fps": "{{FPS}}",
+      "lossless": false,
+      "quality": 90,
+      "method": "default"
+    }
+  },
+  "14": {
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "End image"
+    },
+    "inputs": {
+      "image": "{{IMAGE_2}}"
+    }
+  },
+  "15": {
+    "class_type": "CLIPVisionEncode",
+    "_meta": {
+      "title": "Encode end image"
+    },
+    "inputs": {
+      "clip_vision": [
+        "4",
+        0
+      ],
+      "image": [
+        "14",
+        0
+      ],
+      "crop": "none"
+    }
+  },
+  "9": {
+    "class_type": "WanFirstLastFrameToVideo",
+    "_meta": {
+      "title": "Wan first/last frame to video"
+    },
+    "inputs": {
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "clip_vision_start_image": [
+        "8",
+        0
+      ],
+      "clip_vision_end_image": [
+        "15",
+        0
+      ],
+      "start_image": [
+        "5",
+        0
+      ],
+      "end_image": [
+        "14",
+        0
+      ],
+      "width": "{{WIDTH}}",
+      "height": "{{HEIGHT}}",
+      "length": "{{FRAMES}}",
+      "batch_size": 1
+    }
+  }
+}

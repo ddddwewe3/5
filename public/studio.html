@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استوديو الفيديو المجاني | Vesion</title>
+<meta name="description" content="أنشئ فيديوهات بالذكاء الاصطناعي مجانًا: نص إلى فيديو وصورة إلى فيديو بنماذج مفتوحة المصدر.">
+<link rel="icon" type="image/jpeg" href="img/minichat.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/studio.css">
+</head>
+<body class="studio-body">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+  <symbol id="i-frames" viewBox="0 0 24 24"><rect x="2" y="6" width="8" height="12" rx="1.5"/><rect x="14" y="6" width="8" height="12" rx="1.5"/><path d="M10 12h4"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M11.02 2.81a1 1 0 0 1 1.96 0l1.05 5.56a2 2 0 0 0 1.6 1.6l5.55 1.05a1 1 0 0 1 0 1.96l-5.55 1.05a2 2 0 0 0-1.6 1.6l-1.05 5.56a1 1 0 0 1-1.96 0l-1.05-5.56a2 2 0 0 0-1.6-1.6l-5.55-1.05a1 1 0 0 1 0-1.96l5.55-1.05a2 2 0 0 0 1.6-1.6z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+</svg>
+
+<header id="top">
+  <nav class="wrap">
+    <a href="/" class="logo">Vesion <span>Studio</span></a>
+    <button class="nav-toggle" id="navToggle" aria-label="القائمة" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/">الرئيسية</a></li>
+      <li><a href="/studio" aria-current="page">الاستوديو</a></li>
+      <li><a href="#library">مكتبتي</a></li>
+      <li><a href="/#faq">الأسئلة</a></li>
+    </ul>
+    <span class="free-badge" title="بدون رصيد ولا اشتراك ولا واجهات مدفوعة">مجاني 100%</span>
+  </nav>
+</header>
+
+<main class="studio">
+  <!-- Controls -->
+  <aside class="panel" aria-label="إعدادات التوليد">
+    <button type="button" class="engine-pill" id="enginePill" aria-haspopup="dialog">
+      <span class="dot"></span><span class="engine-text">جارٍ فحص محرك الذكاء الاصطناعي...</span>
+    </button>
+
+    <div class="mode-tabs" role="tablist" aria-label="وضع التوليد">
+      <button role="tab" type="button" data-mode="t2v" aria-selected="true"><svg><use href="#i-text"/></svg>نص إلى فيديو</button>
+      <button role="tab" type="button" data-mode="i2v" aria-selected="false"><svg><use href="#i-image"/></svg>صورة إلى فيديو</button>
+      <button role="tab" type="button" data-mode="flf2v" aria-selected="false"><svg><use href="#i-frames"/></svg>أول وآخر إطار</button>
+    </div>
+
+    <section class="field" aria-labelledby="modelLabel">
+      <div class="field-head"><h2 id="modelLabel">النموذج</h2><span class="hint">مفتوح المصدر · يعمل على جهازك</span></div>
+      <div class="model-list" id="modelList" role="radiogroup" aria-labelledby="modelLabel"></div>
+    </section>
+
+    <section class="field" id="imagesField" hidden aria-labelledby="imagesLabel">
+      <div class="field-head"><h2 id="imagesLabel">الصورة</h2><span class="hint">JPG / PNG / WEBP · حتى 20MB</span></div>
+      <div class="drops" id="drops"></div>
+      <p class="consent">استخدم صور الأشخاص الحقيقيين بعد الحصول على موافقتهم.</p>
+    </section>
+
+    <section class="field">
+      <div class="field-head"><label for="prompt"><h2>البرومبت</h2></label><span class="hint" id="promptCount">0 / 2000</span></div>
+      <textarea id="prompt" rows="5" maxlength="2000" placeholder="صِف المشهد والحركة وحركة الكاميرا... مثال: لقطة سينمائية لمنارة وسط عاصفة ليلية، أمواج تتكسر، الكاميرا تقترب ببطء"></textarea>
+      <p class="lang-hint" id="langHint" hidden>هذا النموذج يفهم البرومبت الإنجليزي فقط. اكتب الوصف بالإنجليزية للحصول على أفضل نتيجة.</p>
+      <div class="chips-scroll" id="ideas" aria-label="أفكار للبرومبت"></div>
+    </section>
+
+    <div class="grid-2">
+      <section class="field">
+        <div class="field-head"><h2 id="durLabel">المدة</h2></div>
+        <div class="seg" id="durations" role="radiogroup" aria-labelledby="durLabel"></div>
+      </section>
+      <section class="field">
+        <div class="field-head"><h2 id="resLabel">الدقة</h2></div>
+        <div class="seg" id="resolutions" role="radiogroup" aria-labelledby="resLabel"></div>
+      </section>
+    </div>
+
+    <section class="field">
+      <div class="field-head"><h2 id="ratioLabel">نسبة الأبعاد</h2><span class="hint" id="dimsHint"></span></div>
+      <div class="seg ratios" id="ratios" role="radiogroup" aria-labelledby="ratioLabel"></div>
+    </section>
+
+    <section class="field">
+      <div class="field-head"><h2 id="varLabel">عدد النسخ</h2><span class="hint">كل نسخة ببذرة مختلفة</span></div>
+      <div class="seg" id="variations" role="radiogroup" aria-labelledby="varLabel"></div>
+    </section>
+
+    <details class="advanced">
+      <summary><svg><use href="#i-sliders"/></svg>خيارات متقدمة</summary>
+      <div class="field">
+        <label for="negative"><h2>البرومبت السلبي</h2></label>
+        <textarea id="negative" rows="2" maxlength="2000" placeholder="ما لا تريد ظهوره: ضبابي، تشوه، نص، علامة مائية..."></textarea>
+      </div>
+      <div class="field">
+        <div class="field-head"><h2 id="motionLabel">قوة الحركة</h2></div>
+        <div class="seg" id="motion" role="radiogroup" aria-labelledby="motionLabel"></div>
+      </div>
+      <div class="field">
+        <label for="seed"><h2>البذرة (Seed)</h2></label>
+        <input id="seed" type="number" min="0" max="4294967295" inputmode="numeric" placeholder="عشوائي">
+      </div>
+    </details>
+
+    <div class="generate-bar">
+      <button type="button" class="btn btn-primary btn-generate" id="generateBtn" disabled>
+        <svg><use href="#i-spark"/></svg><span>ولّد الفيديو</span><span class="free-tag">مجانًا</span>
+      </button>
+      <p class="generate-note" id="generateNote">بدون رصيد · بدون اشتراك · بدون علامة مائية</p>
+    </div>
+    <div class="alert" id="formError" role="alert" hidden></div>
+  </aside>
+
+  <!-- Output -->
+  <section class="stage" aria-label="النتائج">
+    <div class="stage-head">
+      <h1>استوديو الفيديو</h1>
+      <p>أنشئ فيديوهات بالذكاء الاصطناعي مجانًا بنماذج مفتوحة المصدر تعمل على جهازك، بلا رصيد وبلا حدود مدفوعة.</p>
+    </div>
+
+    <div id="current" class="current" aria-live="polite"></div>
+
+    <div class="empty" id="emptyState">
+      <div class="empty-art" aria-hidden="true"><span></span><span></span><span></span></div>
+      <h2>ابدأ أول فيديو لك</h2>
+      <p>اكتب وصفًا للمشهد أو ارفع صورة لتحريكها، ثم اضغط «ولّد الفيديو». ستظهر النتائج هنا وتُحفظ في مكتبتك.</p>
+    </div>
+
+    <section id="library" class="library" aria-labelledby="libraryTitle">
+      <div class="library-head">
+        <h2 id="libraryTitle">مكتبتي</h2>
+        <span class="hint" id="libraryHint"></span>
+      </div>
+      <div class="library-grid" id="libraryGrid"></div>
+    </section>
+  </section>
+</main>
+
+<!-- Engine setup dialog -->
+<dialog class="modal" id="setupDialog" aria-labelledby="setupTitle">
+  <div class="modal-card">
+    <button type="button" class="icon-btn modal-close" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button>
+    <h2 id="setupTitle">تشغيل محرك الفيديو المجاني</h2>
+    <p class="muted" id="setupSummary"></p>
+    <div id="setupBody"></div>
+  </div>
+</dialog>
+
+<!-- Viewer dialog -->
+<dialog class="modal viewer" id="viewerDialog" aria-labelledby="viewerTitle">
+  <div class="modal-card">
+    <button type="button" class="icon-btn modal-close" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button>
+    <h2 id="viewerTitle" class="sr-only">عرض الفيديو</h2>
+    <div id="viewerBody"></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/main.js"></script>
+<script src="js/studio.js"></script>
+</body>
+</html>

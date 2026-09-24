@@ -4,6 +4,7 @@ const path = require('path');
 const Stripe = require('stripe');
 const { saveOrder, readOrders } = require('./lib/orders');
 const { sendConfirmationEmail } = require('./lib/mailer');
+const { createStudioProxy, ownerCookie } = require('./lib/studio-proxy');
 
 // A live key is always a hard stop — this is a learning project, never for real payments.
 if (process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.startsWith('sk_test_')) {
@@ -69,8 +70,16 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) =
   res.json({ received: true });
 });
 
+// Free AI video studio: streamed straight through to the self-hosted video engine, so it is
+// registered before express.json() (uploads must not be buffered or parsed here).
+const ENGINE_URL = process.env.ENGINE_URL || 'http://127.0.0.1:8000';
+app.use('/api/studio', ownerCookie, createStudioProxy({
+  engineUrl: ENGINE_URL,
+  engineToken: process.env.ENGINE_API_TOKEN || '',
+}));
+
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 app.post('/api/create-checkout-session', async (req, res) => {
   if (!stripe) {
@@ -108,7 +117,12 @@ app.get('/api/orders', (req, res) => {
   res.json(readOrders());
 });
 
-app.listen(PORT, () => {
-  const mode = stripe ? 'Stripe test mode' : 'storefront-only, checkout disabled';
-  console.log(`Vesion Store draait op ${BASE_URL} (${mode})`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    const mode = stripe ? 'Stripe test mode' : 'storefront-only, checkout disabled';
+    console.log(`Vesion Store draait op ${BASE_URL} (${mode})`);
+    console.log(`Video studio: ${BASE_URL}/studio — engine at ${ENGINE_URL}`);
+  });
+}
+
+module.exports = app;

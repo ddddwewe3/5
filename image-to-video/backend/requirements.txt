@@ -1,0 +1,9 @@
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+httpx>=0.27
+websockets>=12  # real-time progress from ComfyUI
+pillow>=10.4
+python-dotenv>=1.0
+# Bundled FFmpeg binary (free, no system install needed). A system FFmpeg on PATH is preferred if present.
+imageio-ffmpeg>=0.5

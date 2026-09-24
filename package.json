@@ -2,11 +2,12 @@
   "name": "vesion-store-clone",
   "version": "1.0.0",
   "private": true,
-  "description": "Leerproject: werkende webshop-clone met Stripe Checkout in test-mode",
+  "description": "Vesion \u2014 free AI video studio (self-hosted open-source models) + storefront",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
   },
   "engines": {
     "node": ">=18"

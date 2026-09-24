@@ -14,3 +14,9 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      # Video studio: Render has no GPU, so the video engine runs on your own GPU machine
+      # (exposed with a free Cloudflare Tunnel). See README → "Deploying".
+      - key: ENGINE_URL
+        sync: false
+      - key: ENGINE_API_TOKEN
+        sync: false
