@@ -76,6 +76,7 @@ function progressTracker(ctx, { segments, statsKey }) {
   let seg = 0;
   let stageIdx = 0;
   let firstStepAt = null;
+  let genStartedAt = null; // first sampler step: excludes one-time model download/loading
   let firstStep = 0;
   let perStep = stats[statsKey] && stats[statsKey].perStepSec;
   let lastSteps = { step: 0, total: 0 };
@@ -109,6 +110,7 @@ function progressTracker(ctx, { segments, statsKey }) {
     },
     step(step, total) {
       const now = Date.now();
+      if (!genStartedAt) genStartedAt = now;
       if (!firstStepAt || step <= firstStep) {
         firstStepAt = now;
         firstStep = step;
@@ -119,7 +121,7 @@ function progressTracker(ctx, { segments, statsKey }) {
       const remainingSteps = (total - step) + (segments - seg - 1) * total;
       const etaSec = perStep ? Math.round(remainingSteps * perStep + postEstimate() * (segments - seg)) : estimateFromHistory();
       push('generating', 0.1 + seg * band + band * 0.85 * (step / total), `${prefix()}Generating · step ${step}/${total}`,
-        { step, totalSteps: total, etaSec });
+        { step, totalSteps: total, etaSec, genElapsedSec: (now - genStartedAt) / 1000, loadSec: (genStartedAt - start) / 1000 });
     },
     encoding(frac, message) {
       push('encoding', 0.9 + 0.09 * clamp(frac, 0, 1), message, { etaSec: null });

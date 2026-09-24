@@ -7,10 +7,15 @@
 const COMFY_MODELS = [
   {
     id: 'ltxv-2b',
-    label: 'LTX-Video 2B v0.9.5 (recommended — fastest, text+image to video, ~8 GB VRAM)',
+    label: 'LTX-Video 2B distilled (recommended — fastest: ~8 steps, text+image to video, ~8 GB VRAM)',
     family: 'ltxv',
     files: [
-      { folder: 'checkpoints', name: 'ltx-video-2b-v0.9.5.safetensors', url: 'https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors', sizeGB: 6.3 },
+      { folder: 'checkpoints', name: 'ltxv-2b-0.9.8-distilled.safetensors', url: 'https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltxv-2b-0.9.8-distilled.safetensors', sizeGB: 6.3,
+        // Fallbacks if a file was renamed upstream (the first one that downloads wins).
+        alternatives: [
+          { name: 'ltxv-2b-0.9.6-distilled-04-25.safetensors', url: 'https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltxv-2b-0.9.6-distilled-04-25.safetensors' },
+          { name: 'ltx-video-2b-v0.9.5.safetensors', url: 'https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors' },
+        ] },
       { folder: 'text_encoders', name: 't5xxl_fp8_e4m3fn_scaled.safetensors', url: 'https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn_scaled.safetensors', sizeGB: 5.2 },
     ],
   },

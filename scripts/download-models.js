@@ -63,11 +63,22 @@ async function main() {
   for (const f of model.files) {
     const dir = path.join(comfy, 'models', f.folder);
     fs.mkdirSync(dir, { recursive: true });
-    const dest = path.join(dir, f.name);
-    if (fs.existsSync(dest)) { console.log(`  ✔ ${f.folder}/${f.name} already present`); continue; }
-    console.log(`  ↓ ${f.folder}/${f.name} (~${f.sizeGB} GB)`);
-    await download(f.url, dest);
-    console.log(`  ✔ ${f.folder}/${f.name}`);
+    const options = [{ name: f.name, url: f.url }, ...(f.alternatives || [])];
+    const present = options.find(o => fs.existsSync(path.join(dir, o.name)));
+    if (present) { console.log(`  ✔ ${f.folder}/${present.name} already present`); continue; }
+    let done = false;
+    for (const o of options) {
+      console.log(`  ↓ ${f.folder}/${o.name} (~${f.sizeGB} GB)`);
+      try {
+        await download(o.url, path.join(dir, o.name));
+        console.log(`  ✔ ${f.folder}/${o.name}`);
+        done = true;
+        break;
+      } catch (err) {
+        console.log(`    ${err.message} — trying the next source`);
+      }
+    }
+    if (!done) throw new Error(`Could not download ${f.folder}/${f.name}`);
   }
   console.log('\nDone. Restart ComfyUI (or refresh its model list) and OpenReel will detect the model automatically.\n');
 }

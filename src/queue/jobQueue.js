@@ -80,6 +80,8 @@ class JobQueue extends EventEmitter {
       step: job.step,
       totalSteps: job.totalSteps,
       etaSec: job.etaSec,
+      genElapsedSec: job.genElapsedSec ?? null,
+      loadSec: job.loadSec ?? null,
       queuePosition: job.queuePosition ?? null,
       attempts: job.attempts,
       elapsedSec: job.startedAt ? Math.round((now - job.startedAt) / 100) / 10 : 0,
@@ -197,7 +199,7 @@ class JobQueue extends EventEmitter {
   applyUpdate(job, patch) {
     if (TERMINAL.has(job.status)) return;
     const stageChanged = patch.stage && patch.stage !== job.stage;
-    for (const key of ['stage', 'progress', 'message', 'step', 'totalSteps', 'etaSec']) {
+    for (const key of ['stage', 'progress', 'message', 'step', 'totalSteps', 'etaSec', 'genElapsedSec', 'loadSec']) {
       if (patch[key] !== undefined) job[key] = patch[key];
     }
     if (patch.log) this.addLog(job, patch.log);

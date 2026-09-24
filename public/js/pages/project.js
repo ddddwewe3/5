@@ -230,12 +230,16 @@ export async function render(main, { id, query }) {
     set('eta', stage === 'queued' ? '–' : eta != null ? `~${fmtTime(eta)}` : stage === 'encoding' ? 'a few seconds' : 'measuring…');
     const slow = player.querySelector('[data-p="slow"]');
     if (slow) {
-      const total = eta != null ? elapsed + eta : null;
+      // Judge speed on the generation itself; one-time model download/loading is reported separately.
+      const gen = job && job.genElapsedSec != null ? job.genElapsedSec + (running && snapAt[job.id] ? (Date.now() - snapAt[job.id]) / 1000 : 0) : null;
+      const total = eta != null ? (gen != null ? gen : elapsed) + eta : null;
+      const notes = [];
+      if (job && job.loadSec > 60) notes.push(`First run: ${Math.round(job.loadSec / 60)} min were spent downloading/loading the model (one time only — next videos start immediately).`);
       if (total && total > 120 && ['generating', 'processing'].includes(stage)) {
-        slow.hidden = false;
-        slow.textContent = `On this hardware this ${currentItem().kind === 'render' ? 'render' : 'generation'} takes about ${Math.ceil(total / 60)} min in total. ` +
-          'For faster results choose ⚡ Fast quality or a shorter duration.';
-      } else slow.hidden = true;
+        notes.push(`Generating takes about ${Math.ceil(total / 60)} min on this hardware. For faster results choose ⚡ Fast quality or a shorter duration.`);
+      }
+      slow.hidden = !notes.length;
+      slow.textContent = notes.join(' ');
     }
     const cancelBtn = player.querySelector('[data-action="cancel"]');
     if (cancelBtn) cancelBtn.disabled = rec.status === 'finishing';

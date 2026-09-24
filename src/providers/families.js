@@ -17,7 +17,7 @@ const FAMILIES = {
       balanced: { '16:9': [768, 448], '9:16': [448, 768], '1:1': [512, 512] },
       quality: { '16:9': [1024, 576], '9:16': [576, 1024], '1:1': [768, 768] },
     },
-    steps: { fast: 20, balanced: 30, quality: 40 },
+    steps: { fast: 12, balanced: 25, quality: 40 }, // Fast = turbo: fewest steps that still give clean motion
     cfg: 3,
     distilled: { steps: { fast: 6, balanced: 8, quality: 10 }, cfg: 1 },
     negative: 'worst quality, low quality, blurry, jittery, distorted, deformed, disfigured, motion smear, motion artifacts, ' +
@@ -34,7 +34,7 @@ const FAMILIES = {
       balanced: { '16:9': [832, 480], '9:16': [480, 832], '1:1': [624, 624] },
       quality: { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [960, 960] },
     },
-    steps: { fast: 20, balanced: 30, quality: 40 },
+    steps: { fast: 14, balanced: 30, quality: 40 },
     cfg: 6,
     shift: 8,
     // Wan's recommended negative prompt (trained on Chinese captions) plus English equivalents.
@@ -53,7 +53,7 @@ const FAMILIES = {
       balanced: { '16:9': [1024, 576], '9:16': [576, 1024], '1:1': [768, 768] },
       quality: { '16:9': [1280, 704], '9:16': [704, 1280], '1:1': [960, 960] },
     },
-    steps: { fast: 15, balanced: 20, quality: 30 },
+    steps: { fast: 12, balanced: 20, quality: 30 },
     cfg: 5,
     shift: 8,
     negative: null, // filled from wan below
