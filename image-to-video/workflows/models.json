@@ -6,7 +6,7 @@
       "id": "wan2.2-ti2v-5b",
       "provider": "comfyui",
       "name": "Wan 2.2 · 5B",
-      "tagline_ar": "أفضل توازن بين الجودة والسرعة. نص إلى فيديو وصورة إلى فيديو بدقة حتى 720p.",
+      "tagline_ar": "أفضل توازن بين الجودة والسرعة. نص إلى فيديو وصورة إلى فيديو. ابدأ بـ 480p، و720p يحتاج كرت شاشة 16GB+.",
       "license": "Apache-2.0",
       "min_vram_gb": 8,
       "recommended_vram_gb": 24,
@@ -54,7 +54,7 @@
           ]
         }
       },
-      "default_resolution": "720p",
+      "default_resolution": "480p",
       "files": [
         {
           "name": "wan2.2_ti2v_5B_fp16.safetensors",
