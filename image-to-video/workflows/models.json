@@ -1,0 +1,221 @@
+{
+  "_comment": "Video models the engine can use. Add a model = add its workflows + an entry here. No code change needed.",
+  "default_model": "wan2.2-ti2v-5b",
+  "models": [
+    {
+      "id": "wan2.2-ti2v-5b",
+      "provider": "comfyui",
+      "name": "Wan 2.2 · 5B",
+      "tagline_ar": "أفضل توازن بين الجودة والسرعة. نص إلى فيديو وصورة إلى فيديو بدقة حتى 720p.",
+      "license": "Apache-2.0",
+      "min_vram_gb": 8,
+      "recommended_vram_gb": 24,
+      "fps": 24,
+      "frame_multiple": 4,
+      "steps": 20,
+      "expected_seconds": 540,
+      "prompt_language": "multilingual",
+      "workflows": {
+        "t2v": "wan2.2_ti2v_5b_t2v_api.json",
+        "i2v": "wan2.2_ti2v_5b_i2v_api.json"
+      },
+      "durations": [
+        3,
+        5,
+        8
+      ],
+      "resolutions": {
+        "480p": {
+          "16:9": [
+            832,
+            480
+          ],
+          "9:16": [
+            480,
+            832
+          ],
+          "1:1": [
+            640,
+            640
+          ]
+        },
+        "720p": {
+          "16:9": [
+            1280,
+            704
+          ],
+          "9:16": [
+            704,
+            1280
+          ],
+          "1:1": [
+            960,
+            960
+          ]
+        }
+      },
+      "default_resolution": "720p",
+      "files": [
+        {
+          "name": "wan2.2_ti2v_5B_fp16.safetensors",
+          "folder": "diffusion_models",
+          "size_gb": 10.0,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors"
+        },
+        {
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "folder": "text_encoders",
+          "size_gb": 6.7,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+        },
+        {
+          "name": "wan2.2_vae.safetensors",
+          "folder": "vae",
+          "size_gb": 1.4,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors"
+        }
+      ]
+    },
+    {
+      "id": "ltxv-2b",
+      "provider": "comfyui",
+      "name": "LTX-Video · 2B",
+      "tagline_ar": "الأسرع. مناسب للمعاينات السريعة وكروت الشاشة المتوسطة. يفهم البرومبت الإنجليزي فقط.",
+      "license": "LTX-Video Open Weights (free, see model card)",
+      "min_vram_gb": 12,
+      "recommended_vram_gb": 16,
+      "fps": 24,
+      "frame_multiple": 8,
+      "steps": 30,
+      "expected_seconds": 120,
+      "prompt_language": "english",
+      "workflows": {
+        "t2v": "ltxv_2b_t2v_api.json",
+        "i2v": "ltxv_2b_i2v_api.json"
+      },
+      "durations": [
+        3,
+        5,
+        8
+      ],
+      "resolutions": {
+        "480p": {
+          "16:9": [
+            768,
+            448
+          ],
+          "9:16": [
+            448,
+            768
+          ],
+          "1:1": [
+            512,
+            512
+          ]
+        },
+        "720p": {
+          "16:9": [
+            1216,
+            704
+          ],
+          "9:16": [
+            704,
+            1216
+          ],
+          "1:1": [
+            768,
+            768
+          ]
+        }
+      },
+      "default_resolution": "480p",
+      "files": [
+        {
+          "name": "ltx-video-2b-v0.9.5.safetensors",
+          "folder": "checkpoints",
+          "size_gb": 6.3,
+          "url": "https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors"
+        },
+        {
+          "name": "t5xxl_fp16.safetensors",
+          "folder": "text_encoders",
+          "size_gb": 9.8,
+          "url": "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors"
+        }
+      ]
+    },
+    {
+      "id": "wan2.1-i2v-14b",
+      "provider": "comfyui",
+      "name": "Wan 2.1 · 14B",
+      "tagline_ar": "أعلى جودة لتحريك الصور، ويدعم الانتقال من صورة أولى إلى صورة أخيرة. يحتاج كرت شاشة قويًا.",
+      "license": "Apache-2.0",
+      "min_vram_gb": 16,
+      "recommended_vram_gb": 24,
+      "fps": 16,
+      "frame_multiple": 4,
+      "steps": 20,
+      "expected_seconds": 900,
+      "prompt_language": "multilingual",
+      "workflows": {
+        "i2v": "wan2.1_i2v_480p_api.json",
+        "flf2v": "wan2.1_flf2v_720p_api.json"
+      },
+      "durations": [
+        3,
+        5,
+        8
+      ],
+      "resolutions": {
+        "480p": {
+          "16:9": [
+            832,
+            480
+          ],
+          "9:16": [
+            480,
+            832
+          ],
+          "1:1": [
+            624,
+            624
+          ]
+        }
+      },
+      "default_resolution": "480p",
+      "files": [
+        {
+          "name": "wan2.1_i2v_480p_14B_fp8_e4m3fn.safetensors",
+          "folder": "diffusion_models",
+          "size_gb": 16.4,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_fp8_e4m3fn.safetensors"
+        },
+        {
+          "name": "wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors",
+          "folder": "diffusion_models",
+          "size_gb": 16.4,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors",
+          "optional": true
+        },
+        {
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "folder": "text_encoders",
+          "size_gb": 6.7,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+        },
+        {
+          "name": "wan_2.1_vae.safetensors",
+          "folder": "vae",
+          "size_gb": 0.25,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors"
+        },
+        {
+          "name": "clip_vision_h.safetensors",
+          "folder": "clip_vision",
+          "size_gb": 1.3,
+          "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors"
+        }
+      ]
+    }
+  ]
+}

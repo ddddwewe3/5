@@ -6,9 +6,14 @@ A **free, open-source, fully local** web app: upload one or two images, write a 
 
 - لا توجد واجهات برمجة مدفوعة ولا مفاتيح API. / No paid APIs, no API keys.
 - الصور لا تُرسل إلى أي خدمة خارجية افتراضيًا. / Images never leave your machine by default.
-- الملفات تُحذف تلقائيًا بعد 24 ساعة. / Files are auto-deleted after 24 hours.
-- **وضع المعاينة (Mock)** ينشئ عرض شرائح بحركة Ken Burns لاختبار الواجهة فقط، **وليس فيديو ذكاء اصطناعي**.
-  **Mock mode** makes a Ken Burns slideshow for testing the UI only. **It is not AI video.**
+- الصور المرفوعة تُحذف بعد 24 ساعة، والفيديوهات بعد 7 أيام. / Uploads are deleted after 24 h, videos after 7 days.
+- لا توجد نتائج وهمية: إذا لم يكن ComfyUI مشغّلًا تُرفض الطلبات مع خطوات التشغيل. / No fake results: without ComfyUI, requests are refused with setup steps.
+- **العرض التجريبي** (`ENABLE_DEMO_MODE=true`، معطّل افتراضيًا) عرض شرائح Ken Burns لاختبار الواجهة فقط، **وليس ذكاءً اصطناعيًا**.
+  **Demo mode** (off by default) is a Ken Burns slideshow for UI testing only. **It is not AI video.**
+
+> **This folder is also the video engine behind the main website's `/studio` page** (text-to-video,
+> image-to-video, history, variations). See the [root README](../README.md) for the full platform setup.
+> The engine's models are defined in [`workflows/models.json`](workflows/models.json).
 
 > استخدم صور الأشخاص الحقيقيين بعد الحصول على موافقتهم.
 > Only use photos of real people with their consent.
@@ -36,11 +41,11 @@ A **free, open-source, fully local** web app: upload one or two images, write a 
 | Python | 3.10+ | ComfyUI's own Python |
 | Node.js | 20+ (22 recommended) | — |
 | FFmpeg | **Not required** — bundled via `imageio-ffmpeg` (a system FFmpeg is used if found) | — |
-| GPU | Not needed (mock mode runs on CPU) | NVIDIA GPU, ~12 GB+ VRAM recommended for Wan2.1 14B fp8 (less with GGUF quantized models) |
+| GPU | Not needed to run the app (AI generation is refused on CPU-only ComfyUI) | NVIDIA GPU, ~12 GB+ VRAM recommended for Wan2.1 14B fp8 (less with GGUF quantized models) |
 | Disk | ~1 GB | ~30 GB for Wan2.1 model files |
 
-التطبيق يعمل بدون كرت شاشة في وضع المعاينة. توليد فيديو حقيقي بالذكاء الاصطناعي يحتاج كرت شاشة قويًا.
-The app runs without a GPU in mock mode. Real AI generation needs a capable GPU.
+الواجهة تعمل بدون كرت شاشة، لكن توليد الفيديو بالذكاء الاصطناعي يحتاج كرت شاشة قويًا.
+The UI runs without a GPU, but AI generation needs a capable GPU.
 
 ---
 
@@ -94,8 +99,8 @@ npm run dev
 
 ثم افتح / Then open: **http://127.0.0.1:5173**
 
-إذا لم يكن ComfyUI مثبتًا، ستظهر رسالة واضحة بخطوات التثبيت، ويمكنك اختبار الواجهة بوضع المعاينة.
-If ComfyUI is not installed, the page shows setup steps and you can still test with mock mode.
+إذا لم يكن ComfyUI مثبتًا، ستظهر رسالة واضحة بخطوات التثبيت ولن يتم عرض أي نتيجة وهمية.
+If ComfyUI is not installed, the page shows setup steps; no fake result is ever produced.
 
 Node.js: https://nodejs.org · Python: https://www.python.org/downloads/ (on Windows tick **"Add python.exe to PATH"**).
 
@@ -142,13 +147,12 @@ https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/tree/main/split_file
 الأسماء يجب أن تطابق تمامًا ما في ملف سير العمل، أو عدّل الأسماء داخل ملف JSON.
 File names must match the workflow JSON exactly (or edit the names in the JSON).
 
-If the `flf2v` model is missing, only upload one image, or set
-`COMFYUI_WORKFLOW_TWO_IMAGES=` (empty) in `.env` so two-image requests use the single-image workflow with the first image.
+If the `flf2v` model is missing, two-image requests automatically fall back to animating the first image.
 
 ### 3.3 Connect the app / ربط التطبيق
 
 1. Keep ComfyUI running on `http://127.0.0.1:8188`.
-2. In `.env`: `COMFYUI_URL=http://127.0.0.1:8188` (default) and `VIDEO_PROVIDER=auto` or `comfyui`.
+2. In `.env`: `COMFYUI_URL=http://127.0.0.1:8188` (default). Installed models are detected automatically.
 3. Restart the backend and reload the page. The status box turns green: **"ComfyUI متصل وجاهز."**
 
 How it works: the backend uploads your images to ComfyUI (`POST /upload/image`), fills the workflow
@@ -180,7 +184,7 @@ Both ship with the project. To use **your own** workflow:
    (A normal UI-format save is rejected with a clear message.)
 2. Put `{{IMAGE_1}}`, `{{PROMPT}}`, `{{WIDTH}}`, `{{HEIGHT}}`, `{{FRAMES}}`, `{{SEED}}` … where the values should go —
    full list in [`workflows/README.md`](workflows/README.md).
-3. Save it in `workflows/` and set `COMFYUI_WORKFLOW=your_file.json` in `.env`.
+3. Save it in `workflows/` and reference it from a model entry in `workflows/models.json`.
 
 ---
 
@@ -213,7 +217,7 @@ npm run build
 ```
 
 The backend tests use a **fake ComfyUI server** to exercise the whole ComfyUI path (upload → queue →
-poll → download → MP4), plus real FFmpeg for mock mode, upload validation, and cleanup.
+poll → download → MP4), model-file detection, CPU detection, history, owners, cancel and upload validation.
 
 ---
 
@@ -223,7 +227,13 @@ poll → download → MP4), plus real FFmpeg for mock mode, upload validation, a
 |---|---|---|
 | `GET` | `/api/health` | Engine status + Arabic setup steps |
 | `POST` | `/api/upload` | multipart `file` → `{file_id, width, height}`. JPG/PNG/WEBP, ≤ 20 MB, re-encoded to PNG (metadata stripped); executables rejected |
-| `POST` | `/api/generate` | `{image_ids: [1–2], prompt, duration: 3\|5\|8, aspect_ratio: "9:16"\|"16:9"\|"1:1", motion: "low"\|"medium"\|"high", provider: "auto"\|"comfyui"\|"mock"}` → `202 {job_id, is_mock, notice}` |
+| `GET` | `/api/models` | Models, supported modes/resolutions, installed-file detection |
+| `POST` | `/api/generations` | `{mode: t2v\|i2v\|flf2v, model, prompt, negative_prompt, image_ids, duration, aspect_ratio, resolution, motion, variations, seed}` → `202 {batch_id, generations}` |
+| `GET` | `/api/generations` | History of the caller (`X-Owner-Id` header) |
+| `GET/DELETE` | `/api/generations/{id}` | Status (progress, queue position) / delete |
+| `POST` | `/api/generations/{id}/cancel`, `/regenerate` | Cancel / regenerate with a new seed |
+| `GET` | `/api/generations/{id}/video`, `/thumbnail` | MP4 (`?download=1`) / JPEG poster |
+| `POST` | `/api/generate` (original) | `{image_ids: [1–2], prompt, duration: 3\|5\|8, aspect_ratio: "9:16"\|"16:9"\|"1:1", motion: "low"\|"medium"\|"high", provider: "auto"\|"comfyui"\|"mock"}` → `202 {job_id, is_mock, notice}` |
 | `GET` | `/api/status/{job_id}` | `{status, progress, message, error, setup_steps, video_url}` |
 | `GET` | `/api/video/{job_id}` | MP4 (`?download=1` for attachment) |
 | `DELETE` | `/api/files/{file_id}` | Delete an uploaded image |
@@ -233,8 +243,9 @@ Interactive docs: http://127.0.0.1:8000/docs
 
 ### Adding another engine / إضافة محرك آخر
 
-Implement `VideoProvider` (`backend/app/providers/base.py`: `status()` and `generate()`),
-then register it in `backend/app/providers/__init__.py`.
+Another ComfyUI model: add its API-format workflows and an entry in `workflows/models.json`.
+A different engine: implement `VideoProvider` (`backend/app/providers/base.py`: `status()`, `model_status()`,
+`generate()`), register it in `backend/app/providers/__init__.py`, and set `"provider"` in `models.json`.
 
 ---
 
@@ -275,7 +286,7 @@ image-to-video/
 | "رفض ComfyUI سير العمل… ملفات النموذج" | A model file is missing or named differently; see section 3.2. Details are in the backend log. |
 | "نفدت ذاكرة كرت الشاشة (VRAM)" | Use 3 seconds, close other GPU apps, or switch to a GGUF quantized Wan2.1 I2V model. |
 | Video looks unrelated to the prompt | Wan understands English best; Arabic prompts work partially. Try an English prompt. |
-| Two-image request fails | Download the `flf2v` model or clear `COMFYUI_WORKFLOW_TWO_IMAGES`. |
+| Two-image request only animates the first image | Download the optional `flf2v` model file. |
 | `npm` / `node` not found | Install Node.js 20+ and reopen the terminal. |
 
 ---

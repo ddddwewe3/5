@@ -1,67 +1,14 @@
-"""Tests the ComfyUI provider against a fake in-process ComfyUI API."""
+"""ComfyUI provider against a fake in-process ComfyUI API."""
 
-import io
 import json
 
-import httpx
 import imageio_ffmpeg
 import pytest
-from fastapi.testclient import TestClient
 from PIL import Image
 
-from app.main import create_app
-from app.providers.comfyui import ComfyUIProvider, fill_workflow, frame_count, is_local_url
-from conftest import upload, wait_for_job
-
-
-def animated_webp(frames=6, size=(96, 160)) -> bytes:
-    images = [Image.new("RGB", size, (i * 40 % 255, 100, 150)) for i in range(frames)]
-    buffer = io.BytesIO()
-    images[0].save(buffer, format="WEBP", save_all=True, append_images=images[1:], duration=62, loop=0)
-    return buffer.getvalue()
-
-
-class FakeComfyUI:
-    def __init__(self, fail_prompt: bool = False, pending_polls: int = 1):
-        self.fail_prompt = fail_prompt
-        self.pending_polls = pending_polls
-        self.uploaded: list[str] = []
-        self.queued_workflow: dict | None = None
-
-    def handler(self, request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == "/system_stats":
-            return httpx.Response(200, json={"system": {"comfyui_version": "0.3.test"}})
-        if path == "/upload/image":
-            name = f"upload_{len(self.uploaded)}.png"
-            self.uploaded.append(name)
-            return httpx.Response(200, json={"name": name, "subfolder": "", "type": "input"})
-        if path == "/prompt":
-            if self.fail_prompt:
-                return httpx.Response(400, json={"error": {"type": "value_not_in_list",
-                                                           "message": "unet_name not in list"}})
-            self.queued_workflow = json.loads(request.content)["prompt"]
-            return httpx.Response(200, json={"prompt_id": "pid-1", "number": 1, "node_errors": {}})
-        if path == "/history/pid-1":
-            if self.pending_polls > 0:
-                self.pending_polls -= 1
-                return httpx.Response(200, json={})
-            return httpx.Response(200, json={"pid-1": {
-                "status": {"status_str": "success", "completed": True},
-                "outputs": {"13": {"images": [{"filename": "out_00001_.webp", "subfolder": "image2video",
-                                               "type": "output"}], "animated": [True]}},
-            }})
-        if path == "/view":
-            assert request.url.params["filename"] == "out_00001_.webp"
-            return httpx.Response(200, content=animated_webp())
-        return httpx.Response(404)
-
-
-def make_client(settings, fake: FakeComfyUI) -> TestClient:
-    settings.comfyui_url = "http://127.0.0.1:8188"
-    app = create_app(settings, comfy_transport=httpx.MockTransport(fake.handler))
-    app.state.providers["comfyui"].poll_interval = 0.01
-    return TestClient(app)
+from app.models_registry import load_registry
+from app.providers.comfyui import ComfyUIProvider, _ProgressWatcher, fill_workflow, find_missing, is_local_url
+from conftest import WAN21_FILES, WAN22_FILES, FakeComfyUI, comfy_client, upload, wait_for
 
 
 def test_fill_workflow_keeps_types_and_substitutes_text():
@@ -70,8 +17,24 @@ def test_fill_workflow_keeps_types_and_substitutes_text():
     assert filled["a"]["inputs"] == {"w": 480, "t": "prefix hi", "keep": "{{UNKNOWN}}", "l": ["1", 0]}
 
 
-def test_frame_count_is_4n_plus_1():
-    assert frame_count(3) == 49 and frame_count(5) == 81 and frame_count(8) == 129
+def test_frame_counts_follow_each_model(settings):
+    registry = load_registry(settings.workflows_dir)
+    wan22, ltx, wan21 = (registry.get(i) for i in ("wan2.2-ti2v-5b", "ltxv-2b", "wan2.1-i2v-14b"))
+    assert [wan22.frame_count(d) for d in (3, 5, 8)] == [73, 121, 193]   # 4n+1 at 24 fps
+    assert [ltx.frame_count(d) for d in (3, 5, 8)] == [73, 121, 193]     # 8n+1 at 24 fps
+    assert all((ltx.frame_count(d) - 1) % 8 == 0 for d in (3, 5, 8))
+    assert [wan21.frame_count(d) for d in (3, 5, 8)] == [49, 81, 129]   # 4n+1 at 16 fps
+
+
+def test_every_workflow_file_in_the_registry_exists_and_is_api_format(settings):
+    registry = load_registry(settings.workflows_dir)
+    provider = ComfyUIProvider(settings, "ffmpeg")
+    for model in registry.models:
+        for mode, name in model.workflows.items():
+            workflow = provider.load_workflow(settings.workflows_dir / name)
+            assert "{{PROMPT}}" in json.dumps(workflow), (model.id, mode)
+            has_image = "{{IMAGE_1}}" in json.dumps(workflow)
+            assert has_image == (mode != "t2v"), (model.id, mode)
 
 
 @pytest.mark.parametrize("url,expected", [
@@ -90,74 +53,212 @@ def test_remote_comfyui_refused_by_default(settings):
     assert "ALLOW_REMOTE_COMFYUI" in status.message
 
 
-def test_ui_format_workflow_is_rejected_with_clear_message(settings):
+def test_ui_format_workflow_is_rejected(settings):
     (settings.workflows_dir / "ui.json").write_text(json.dumps({"nodes": [], "links": []}))
-    provider = ComfyUIProvider(settings, "ffmpeg")
     with pytest.raises(Exception) as err:
-        provider._load_workflow(settings.workflows_dir / "ui.json")
+        ComfyUIProvider(settings, "ffmpeg").load_workflow(settings.workflows_dir / "ui.json")
     assert "API" in err.value.message
 
 
-def test_full_comfyui_generation_flow(settings):
-    fake = FakeComfyUI()
-    with make_client(settings, fake) as client:
-        assert client.get("/api/health").json()["providers"]["comfyui"]["available"] is True
-        file_id = upload(client).json()["file_id"]
-        response = client.post("/api/generate", json={
-            "image_ids": [file_id], "prompt": "زفاف", "duration": 5, "aspect_ratio": "9:16", "motion": "low",
+def test_find_missing_reports_files_and_nodes():
+    workflow = {"1": {"class_type": "UNETLoader", "inputs": {"unet_name": "model.safetensors"}},
+                "2": {"class_type": "NewNode", "inputs": {}},
+                "3": {"class_type": "LoadImage", "inputs": {"image": "{{IMAGE_1}}"}}}
+    info = {"UNETLoader": {"input": {"required": {"unet_name": [["other.safetensors"], {}]}}},
+            "LoadImage": {"input": {"required": {"image": [["a.png"], {}]}}}}
+    missing = find_missing(workflow, info)
+    assert {"kind": "file", "name": "model.safetensors", "folder": "diffusion_models",
+            "node": "UNETLoader", "input": "unet_name"} in missing
+    assert {"kind": "node", "name": "NewNode"} in missing
+    assert len(missing) == 2
+    # New-style COMBO schema
+    info["UNETLoader"]["input"]["required"]["unet_name"] = ["COMBO", {"options": ["model.safetensors"]}]
+    info["NewNode"] = {"input": {"required": {}}}
+    assert find_missing(workflow, info) == []
+
+
+def test_model_availability_detects_installed_files(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES)
+    with comfy_client(settings, fake) as client:
+        health = client.get("/api/health").json()["engine"]
+        assert health["available"] is True
+        assert health["details"]["gpu"] == {"has_gpu": True, "name": "cuda:0 NVIDIA RTX 4090",
+                                            "type": "cuda", "vram_gb": 24.0}
+        models = {m["id"]: m["availability"] for m in client.get("/api/models").json()["models"]}
+    assert models["wan2.2-ti2v-5b"]["available"] is True
+    assert models["wan2.2-ti2v-5b"]["modes"]["t2v"]["available"] is True
+    assert models["ltxv-2b"]["available"] is False
+    assert "ltx-video-2b-v0.9.5.safetensors" in models["ltxv-2b"]["message"]
+    assert "download_models.py" in models["ltxv-2b"]["setup_steps"][0]
+
+
+def test_missing_node_asks_to_update_comfyui(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, missing_nodes={"Wan22ImageToVideoLatent"})
+    with comfy_client(settings, fake) as client:
+        model = client.get("/api/models").json()["models"][0]["availability"]
+    assert model["available"] is False
+    assert "Wan22ImageToVideoLatent" in model["message"]
+    assert "حدّث ComfyUI" in model["setup_steps"][0]
+
+
+def test_cpu_only_comfyui_is_detected_and_refused(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, gpu=False)
+    with comfy_client(settings, fake) as client:
+        engine = client.get("/api/health").json()["engine"]
+        assert engine["available"] is False
+        assert "CPU" in engine["message"]
+        assert client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).status_code == 503
+    settings.allow_cpu_generation = True
+    with comfy_client(settings, fake) as client:
+        assert client.get("/api/health").json()["engine"]["available"] is True
+
+
+def test_text_to_video_full_flow(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES)
+    with comfy_client(settings, fake) as client:
+        response = client.post("/api/generations", json={
+            "mode": "t2v", "prompt": "a lighthouse in a storm", "negative_prompt": "blurry",
+            "duration": 5, "aspect_ratio": "16:9", "resolution": "720p", "motion": "high",
         })
-        body = response.json()
-        assert body["provider"] == "comfyui" and body["is_mock"] is False and body["notice"] is None
-        job = wait_for_job(client, body["job_id"])
-        assert job["status"] == "completed", job
+        assert response.status_code == 202, response.text
+        generation = response.json()["generations"][0]
+        assert generation["model"] == "wan2.2-ti2v-5b" and generation["is_demo"] is False
+        assert generation["notice"] is None
+        done = wait_for(client, generation["id"])
+        assert done["status"] == "completed", done
+        assert done["thumbnail_url"] and done["video_url"]
 
-    inputs = {node_id: node["inputs"] for node_id, node in fake.queued_workflow.items()}
-    assert inputs["5"]["image"] == "upload_0.png"
-    assert inputs["9"]["width"] == 480 and inputs["9"]["height"] == 832 and inputs["9"]["length"] == 81
-    assert inputs["6"]["text"].startswith("زفاف")
-    assert isinstance(inputs["11"]["seed"], int)
-    assert "_comment" not in fake.queued_workflow
-
-    video = settings.output_dir / f"{body['job_id']}.mp4"
-    frames, _ = imageio_ffmpeg.count_frames_and_secs(str(video))
+    workflow = fake.queued[0]
+    assert "_comment" not in workflow
+    latent = workflow["6"]["inputs"]
+    assert (latent["width"], latent["height"], latent["length"]) == (1280, 704, 121)
+    assert "start_image" not in latent
+    assert workflow["4"]["inputs"]["text"].startswith("a lighthouse in a storm")
+    assert "energetic" in workflow["4"]["inputs"]["text"]
+    assert workflow["5"]["inputs"]["text"] == "blurry"
+    assert workflow["10"]["inputs"]["fps"] == 24
+    assert isinstance(workflow["8"]["inputs"]["seed"], int)
+    assert fake.uploaded == []
+    frames, _ = imageio_ffmpeg.count_frames_and_secs(str(settings.output_dir / generation["id"] / "video.mp4"))
     assert frames == 6
 
 
-def test_two_images_use_first_last_frame_workflow(settings):
-    fake = FakeComfyUI(pending_polls=0)
-    with make_client(settings, fake) as client:
-        ids = [upload(client).json()["file_id"] for _ in range(2)]
-        job_id = client.post("/api/generate", json={"image_ids": ids, "prompt": "x"}).json()["job_id"]
-        assert wait_for_job(client, job_id)["status"] == "completed"
-    assert fake.queued_workflow["9"]["class_type"] == "WanFirstLastFrameToVideo"
-    assert fake.queued_workflow["14"]["inputs"]["image"] == "upload_1.png"
-
-
-def test_missing_model_error_is_reported_in_arabic(settings):
-    fake = FakeComfyUI(fail_prompt=True)
-    with make_client(settings, fake) as client:
+def test_image_to_video_and_variations(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, pending_polls=0)
+    with comfy_client(settings, fake) as client:
         file_id = upload(client).json()["file_id"]
-        job_id = client.post("/api/generate", json={"image_ids": [file_id], "prompt": "x"}).json()["job_id"]
-        job = wait_for_job(client, job_id)
-    assert job["status"] == "failed"
-    assert "رفض ComfyUI" in job["error"]
-    assert "ملفات النموذج" in job["error"]
-    assert "unet_name" in job["error_details"]
+        response = client.post("/api/generations", json={
+            "mode": "i2v", "prompt": "make it move", "image_ids": [file_id], "aspect_ratio": "9:16",
+            "resolution": "480p", "duration": 3, "variations": 3, "seed": 100,
+        })
+        generations = response.json()["generations"]
+        assert len({g["batch_id"] for g in generations}) == 1
+        assert [g["params"]["seed"] for g in generations] == [100, 101, 102]
+        for g in generations:
+            assert wait_for(client, g["id"])["status"] == "completed"
+    assert len(fake.queued) == 3
+    assert fake.queued[0]["11"]["inputs"]["image"] == "upload_0.png"
+    assert fake.queued[0]["6"]["inputs"]["start_image"] == ["11", 0]
+    assert (fake.queued[0]["6"]["inputs"]["width"], fake.queued[0]["6"]["inputs"]["height"]) == (480, 832)
 
 
-def test_empty_two_image_workflow_setting_falls_back_to_single_image(monkeypatch, settings):
-    from app.config import load_settings
-
-    monkeypatch.setenv("COMFYUI_WORKFLOW_TWO_IMAGES", "")
-    assert load_settings().comfyui_workflow_two_images == ""
-
-    settings.comfyui_workflow_two_images = ""
-    fake = FakeComfyUI(pending_polls=0)
-    with make_client(settings, fake) as client:
+def test_first_last_frame_uses_wan21(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN21_FILES, pending_polls=0)
+    with comfy_client(settings, fake) as client:
         ids = [upload(client).json()["file_id"] for _ in range(2)]
-        job_id = client.post("/api/generate", json={"image_ids": ids, "prompt": "x"}).json()["job_id"]
-        assert wait_for_job(client, job_id)["status"] == "completed"
-    assert fake.queued_workflow["9"]["class_type"] == "WanImageToVideo"
+        response = client.post("/api/generations", json={
+            "model": "wan2.1-i2v-14b", "mode": "flf2v", "prompt": "x", "image_ids": ids})
+        assert wait_for(client, response.json()["generations"][0]["id"])["status"] == "completed"
+    assert fake.queued[0]["9"]["class_type"] == "WanFirstLastFrameToVideo"
+    assert fake.queued[0]["14"]["inputs"]["image"] == "upload_1.png"
+
+
+def test_legacy_generate_uses_an_installed_image_model(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN21_FILES, pending_polls=0)
+    with comfy_client(settings, fake) as client:
+        file_id = upload(client).json()["file_id"]
+        response = client.post("/api/generate", json={"image_ids": [file_id], "prompt": "x"})
+        assert response.status_code == 202, response.text
+        assert response.json()["is_mock"] is False
+        job = wait_for(client, response.json()["job_id"], path="/api/status/")
+    assert job["status"] == "completed"
+    assert fake.queued[0]["9"]["class_type"] == "WanImageToVideo"
+
+
+def test_rejected_workflow_is_reported_in_arabic(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, fail_prompt=True)
+    with comfy_client(settings, fake) as client:
+        gid = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "failed"
+    assert "رفض ComfyUI" in done["error"]
+    assert "unet_name" in done["error_details"]
+
+
+def test_out_of_vram_is_explained(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, pending_polls=0,
+                       history_error="torch.OutOfMemoryError: CUDA out of memory")
+    with comfy_client(settings, fake) as client:
+        gid = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "failed"
+    assert "VRAM" in done["error"]
+
+
+def test_cancel_and_delete_running_generation(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, never_finish=True)
+    with comfy_client(settings, fake) as client:
+        first = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).json()["generations"][0]
+        _wait_status(client, first["id"], "running")
+        client.post(f"/api/generations/{first['id']}/cancel")
+        assert wait_for(client, first["id"])["status"] == "cancelled"
+        assert fake.interrupted or fake.deleted_from_queue
+
+        second = client.post("/api/generations", json={"mode": "t2v", "prompt": "y"}).json()["generations"][0]
+        _wait_status(client, second["id"], "running")
+        assert client.delete(f"/api/generations/{second['id']}").json()["deleted"] is True
+        assert client.get(f"/api/generations/{second['id']}").status_code == 404
+        _wait_gone(settings, second["id"])
+
+
+def _wait_status(client, gid, status, timeout=10):
+    import time
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if client.get(f"/api/generations/{gid}").json()["status"] == status:
+            return
+        time.sleep(0.05)
+    raise AssertionError(f"never reached {status}")
+
+
+def _wait_gone(settings, gid, timeout=10):
+    import time
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not (settings.output_dir / gid).exists():
+            return
+        time.sleep(0.05)
+    raise AssertionError("files not removed")
+
+
+def test_websocket_progress_mapping():
+    watcher = _ProgressWatcher("http://127.0.0.1:8188", "abc")
+    assert watcher.url == "ws://127.0.0.1:8188/ws?clientId=abc"
+    assert watcher.progress()[0] == 0.08
+    watcher._handle({"type": "execution_start", "data": {"prompt_id": "p"}})
+    watcher._handle({"type": "progress", "data": {"value": 10, "max": 20}})
+    fraction, message = watcher.progress()
+    assert fraction == pytest.approx(0.5)
+    assert "10 من 20" in message
+    watcher._handle({"type": "progress", "data": {"value": 20, "max": 20}})
+    watcher._handle({"type": "executing", "data": {"node": "9"}})
+    assert watcher.progress()[0] == 0.92
+    watcher._handle({"type": "executing", "data": {"node": None}})
+    assert watcher.finished
+    watcher._handle({"type": "execution_error", "data": {"exception_message": "boom"}})
+    assert "boom" in watcher.error
 
 
 def test_animated_webp_keeps_timing_of_merged_frames(tmp_path):
@@ -165,7 +266,6 @@ def test_animated_webp_keeps_timing_of_merged_frames(tmp_path):
 
     frames = [Image.new("RGB", (64, 64), c) for c in [(255, 0, 0), (0, 255, 0)]]
     src = tmp_path / "anim.webp"
-    # second frame lasts 3 frame-intervals, as libwebp produces when identical frames are merged
     frames[0].save(src, format="WEBP", save_all=True, append_images=frames[1:], duration=[62, 188], loop=0)
     dst = tmp_path / "out.mp4"
     animated_image_to_mp4(find_ffmpeg(), src, dst, default_fps=16)

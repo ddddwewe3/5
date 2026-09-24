@@ -1,0 +1,156 @@
+{
+  "_comment": "LTX-Video 2B v0.9.5 — text to video (fast).",
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "LTX-Video 2B"
+    },
+    "inputs": {
+      "ckpt_name": "ltx-video-2b-v0.9.5.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Text encoder (T5 XXL)"
+    },
+    "inputs": {
+      "clip_name": "t5xxl_fp16.safetensors",
+      "type": "ltxv"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive prompt"
+    },
+    "inputs": {
+      "text": "{{PROMPT}}",
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative prompt"
+    },
+    "inputs": {
+      "text": "{{NEGATIVE_PROMPT}}",
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": {
+      "width": "{{WIDTH}}",
+      "height": "{{HEIGHT}}",
+      "length": "{{FRAMES}}",
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "frame_rate": "{{FPS}}"
+    }
+  },
+  "7": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "8": {
+    "class_type": "LTXVScheduler",
+    "inputs": {
+      "steps": "{{STEPS}}",
+      "max_shift": 2.05,
+      "base_shift": 0.95,
+      "stretch": true,
+      "terminal": 0.1,
+      "latent": [
+        "5",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "Sampler"
+    },
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "add_noise": true,
+      "noise_seed": "{{SEED}}",
+      "cfg": 3.0,
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "6",
+        1
+      ],
+      "sampler": [
+        "7",
+        0
+      ],
+      "sigmas": [
+        "8",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "9",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    }
+  },
+  "11": {
+    "class_type": "SaveAnimatedWEBP",
+    "_meta": {
+      "title": "Save video"
+    },
+    "inputs": {
+      "images": [
+        "10",
+        0
+      ],
+      "filename_prefix": "{{FILENAME_PREFIX}}",
+      "fps": "{{FPS}}",
+      "lossless": false,
+      "quality": 90,
+      "method": "default"
+    }
+  }
+}

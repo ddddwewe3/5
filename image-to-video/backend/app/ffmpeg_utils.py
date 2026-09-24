@@ -173,3 +173,16 @@ def ken_burns_slideshow(
             str(dst),
         ],
     )
+
+
+def make_thumbnail(ffmpeg: str, video: Path, dst: Path, width: int = 480) -> None:
+    """Poster image for the history grid (first frames can be black, so seek slightly in)."""
+    for seek in ("0.4", "0"):
+        try:
+            run_ffmpeg(ffmpeg, ["-ss", seek, "-i", str(video), "-frames:v", "1",
+                                "-vf", f"scale={width}:-2", "-q:v", "4", str(dst)], timeout=60)
+        except FFmpegError:
+            continue
+        if dst.is_file() and dst.stat().st_size > 0:
+            return
+    raise FFmpegError("Could not create thumbnail")

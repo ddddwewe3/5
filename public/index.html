@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vesion Store | متجر المنتجات الرقمية</title>
+<title>Vesion | استوديو فيديو بالذكاء الاصطناعي — مجاني</title>
+<meta name="description" content="أنشئ فيديوهات بالذكاء الاصطناعي مجانًا: نص إلى فيديو وصورة إلى فيديو بنماذج مفتوحة المصدر تعمل على جهازك.">
 <link rel="icon" type="image/jpeg" href="img/minichat.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,11 +20,13 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <ul class="nav-links" id="navLinks">
-      <li><a href="#products">المنتجات</a></li>
+      <li><a href="/studio">الاستوديو</a></li>
       <li><a href="#features">المزايا</a></li>
+      <li><a href="#models">النماذج</a></li>
+      <li><a href="#products">المتجر</a></li>
       <li><a href="#faq">الأسئلة</a></li>
     </ul>
-    <a href="#products" class="btn btn-primary">اشتر الآن</a>
+    <a href="/studio" class="btn btn-primary">جرّب مجانًا</a>
   </nav>
 </header>
 
@@ -31,23 +34,87 @@
   <section class="hero">
     <div class="hero-grid wrap">
       <div class="hero-media">
-        <img class="hero-icon" src="img/minichat.jpg" alt="أيقونة تطبيق mini chat" width="1024" height="1024" />
+        <div class="reel" aria-hidden="true">
+          <div class="reel-screen">
+            <div class="reel-layer l1"></div>
+            <div class="reel-layer l2"></div>
+            <div class="reel-layer l3"></div>
+            <div class="reel-scan"></div>
+          </div>
+          <div class="reel-prompt"><span class="caret">▍</span>لقطة سينمائية لمنارة وسط عاصفة ليلية، الكاميرا تقترب ببطء</div>
+          <div class="reel-meta"><span>Wan 2.2</span><span>16:9</span><span>720p</span><span>5ث</span></div>
+        </div>
       </div>
       <div class="hero-copy">
         <span class="badge-eyebrow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.02 2.81a1 1 0 0 1 1.96 0l1.05 5.56a2 2 0 0 0 1.6 1.6l5.55 1.05a1 1 0 0 1 0 1.96l-5.55 1.05a2 2 0 0 0-1.6 1.6l-1.05 5.56a1 1 0 0 1-1.96 0l-1.05-5.56a2 2 0 0 0-1.6-1.6l-5.55-1.05a1 1 0 0 1 0-1.96l5.55-1.05a2 2 0 0 0 1.6-1.6z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>
-          منتجات رقمية من تطويرنا الخاص
+          مجاني بالكامل · بدون رصيد · بدون اشتراك
         </span>
-        <h1><span class="accent">mini chat</span><br>تطبيق دردشة تملكه بالكامل</h1>
-        <p>اشتراك ميني تشات بلس معدل للايفون فقط، دفعة واحدة وتحديثات مدى الحياة.</p>
-        <a href="#products" class="btn btn-primary">ابدأ الشراء</a>
+        <h1>حوّل أفكارك إلى <span class="accent">فيديو</span><br>بالذكاء الاصطناعي</h1>
+        <p>نص إلى فيديو، وصورة إلى فيديو، وتحريك الصور — بنماذج مفتوحة المصدر مثل Wan 2.2 و LTX-Video تعمل على جهازك. بلا واجهات مدفوعة وبلا علامة مائية.</p>
+        <div class="hero-actions">
+          <a href="/studio" class="btn btn-primary">افتح الاستوديو مجانًا</a>
+          <a href="#how" class="btn btn-outline">كيف يعمل؟</a>
+        </div>
       </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="section-head">
+      <h2>ثلاث خطوات فقط</h2>
+      <p>كل شيء يعمل على محرك مفتوح المصدر تملكه أنت.</p>
+    </div>
+    <ol class="steps-grid">
+      <li><span class="step-num">1</span><h3>اكتب أو ارفع</h3><p>صِف المشهد بالكلمات، أو ارفع صورة لتحريكها، أو صورتين للانتقال بينهما.</p></li>
+      <li><span class="step-num">2</span><h3>اختر الإعدادات</h3><p>النموذج، والمدة (3 أو 5 أو 8 ثوانٍ)، ونسبة الأبعاد 16:9 أو 9:16 أو 1:1، والدقة، وعدد النسخ.</p></li>
+      <li><span class="step-num">3</span><h3>ولّد ونزّل</h3><p>تابع التقدم خطوة بخطوة، شاهد النتيجة، ونزّلها MP4 أو أعد التوليد بنسخة جديدة.</p></li>
+    </ol>
+  </section>
+
+  <section id="features">
+    <div class="section-head">
+      <h2>ليش Vesion؟</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></div>
+        <h3>نص إلى فيديو</h3>
+        <p>اكتب وصفًا لأي مشهد واحصل على فيديو قصير بحركة كاميرا سينمائية.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></div>
+        <h3>تحريك الصور</h3>
+        <p>ارفع صورة وحرّكها، أو ارفع صورتين وانتقل من الأولى إلى الأخيرة.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/><path d="m4 4 16 16"/></svg></div>
+        <h3>مجاني فعلًا</h3>
+        <p>لا رصيد ولا اشتراك ولا واجهات مدفوعة. النماذج مفتوحة المصدر وتعمل على كرت شاشتك.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>خصوصيتك محفوظة</h3>
+        <p>صورك وفيديوهاتك تبقى على محركك الخاص ولا تُرسل إلى أي خدمة خارجية.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="models">
+    <div class="section-head">
+      <h2>نماذج مفتوحة المصدر</h2>
+      <p>اختر النموذج المناسب لكرت شاشتك — ويمكن إضافة نماذج جديدة لاحقًا بدون إعادة بناء الموقع.</p>
+    </div>
+    <div class="models-grid">
+      <article class="model-tile"><h3>Wan 2.2 · 5B</h3><p>نص إلى فيديو وصورة إلى فيديو حتى 720p. أفضل توازن بين الجودة والسرعة.</p><ul><li>Apache-2.0</li><li>من 8GB VRAM</li><li>24 fps</li></ul></article>
+      <article class="model-tile"><h3>LTX-Video · 2B</h3><p>الأسرع للمعاينات والأفكار السريعة، ويعمل على كروت الشاشة المتوسطة.</p><ul><li>أوزان مفتوحة مجانية</li><li>من 12GB VRAM</li><li>24 fps</li></ul></article>
+      <article class="model-tile"><h3>Wan 2.1 · 14B</h3><p>أعلى جودة لتحريك الصور، ويدعم الانتقال من إطار أول إلى إطار أخير.</p><ul><li>Apache-2.0</li><li>من 16GB VRAM</li><li>16 fps</li></ul></article>
     </div>
   </section>
 
   <section id="products">
     <div class="section-head">
-      <h2>الباقات</h2>
+      <h2>المتجر</h2>
       <p>دفعة واحدة، تحميل فوري، بدون اشتراكات مخفية.</p>
     </div>
     <div class="pricing-card">
@@ -69,9 +136,9 @@
     </div>
   </section>
 
-  <section id="features">
+  <section id="store-features">
     <div class="section-head">
-      <h2>ليش Vesion؟</h2>
+      <h2>ليش متجر Vesion؟</h2>
     </div>
     <div class="features-grid">
       <div class="feature-card">
@@ -103,6 +170,22 @@
     </div>
     <div class="faq-list">
       <div class="faq-item open">
+        <button class="faq-question">هل توليد الفيديو مجاني فعلًا؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>نعم. لا يوجد رصيد ولا اشتراك ولا واجهات برمجة مدفوعة. التوليد يتم بنماذج مفتوحة المصدر (Wan 2.2 و LTX-Video و Wan 2.1) عبر ComfyUI على جهاز فيه كرت شاشة.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">ماذا أحتاج لتشغيل المحرك؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>جهاز فيه كرت شاشة NVIDIA بذاكرة 8GB على الأقل لنموذج Wan 2.2 (5B). سكربت الإعداد يثبّت ComfyUI وينزّل ملفات النموذج تلقائيًا. إذا لم يكن المحرك مشغّلًا يوضّح الاستوديو ذلك بصراحة ولا يعرض نتائج وهمية.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">كم يستغرق توليد الفيديو؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>يعتمد على كرت الشاشة والنموذج: LTX-Video قد يحتاج دقيقة أو دقيقتين، و Wan 2.2 بدقة 720p قرابة عشر دقائق لفيديو 5 ثوانٍ على RTX 4090. يعرض الاستوديو التقدم خطوة بخطوة.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">أين تُحفظ فيديوهاتي؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="faq-answer"><p>على محرك الفيديو الخاص بك فقط، في مكتبتك داخل الاستوديو لمدة 7 أيام. نزّل ما تريد الاحتفاظ به، واحذف أي فيديو متى شئت.</p></div>
+      </div>
+      <div class="faq-item">
         <button class="faq-question">كيف بستلم المنتج بعد الدفع؟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
         <div class="faq-answer"><p>بعد إتمام الدفع بتوصلك رسالة فيها رابط التحميل ومفتاح الرخصة مباشرة.</p></div>
       </div>
@@ -122,7 +205,7 @@
   </section>
 </main>
 
-<footer>© 2026 Vesion Store — جميع الحقوق محفوظة.</footer>
+<footer>© 2026 Vesion — استوديو فيديو مجاني بنماذج مفتوحة المصدر. <a href="/studio">افتح الاستوديو</a></footer>
 
 <script src="js/main.js"></script>
 </body>

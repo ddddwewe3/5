@@ -3,15 +3,18 @@
 This folder holds **ComfyUI workflows in API format**. The backend loads them, fills in the
 placeholders, and sends them to your local ComfyUI at `COMFYUI_URL`.
 
-| File | Used when | Model files it expects |
+[`models.json`](models.json) lists every model: its workflow per mode (`t2v`, `i2v`, `flf2v`),
+resolutions, durations, fps and the model files with download links. The engine checks ComfyUI's
+`/object_info` to show which models are installed. Download files with
+`python scripts/download_models.py --model <id> --comfyui <path>` (from the repository root).
+
+| Model id | Workflows | Model files |
 |---|---|---|
-| `wan2.1_i2v_480p_api.json` | 1 image (and fallback for 2 images) | `wan2.1_i2v_480p_14B_fp8_e4m3fn.safetensors` |
-| `wan2.1_flf2v_720p_api.json` | 2 images (first frame → last frame) | `wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors` |
+| `wan2.2-ti2v-5b` (default) | `wan2.2_ti2v_5b_t2v_api.json`, `wan2.2_ti2v_5b_i2v_api.json` | `wan2.2_ti2v_5B_fp16`, `umt5_xxl_fp8_e4m3fn_scaled`, `wan2.2_vae` |
+| `ltxv-2b` | `ltxv_2b_t2v_api.json`, `ltxv_2b_i2v_api.json` | `ltx-video-2b-v0.9.5`, `t5xxl_fp16` |
+| `wan2.1-i2v-14b` | `wan2.1_i2v_480p_api.json`, `wan2.1_flf2v_720p_api.json` | `wan2.1_i2v_480p_14B_fp8_e4m3fn` (+ optional `wan2.1_flf2v_720p_14B_fp8_e4m3fn`), `umt5_xxl_fp8_e4m3fn_scaled`, `wan_2.1_vae`, `clip_vision_h` |
 
-Both also need `umt5_xxl_fp8_e4m3fn_scaled.safetensors`, `wan_2.1_vae.safetensors` and
-`clip_vision_h.safetensors`. See the main README for download links and folders.
-
-The file names are set in `.env` (`COMFYUI_WORKFLOW`, `COMFYUI_WORKFLOW_TWO_IMAGES`).
+All workflows were validated against ComfyUI 0.37's node definitions.
 
 ## Using your own workflow / استخدام سير عمل خاص بك
 
@@ -24,15 +27,17 @@ The file names are set in `.env` (`COMFYUI_WORKFLOW`, `COMFYUI_WORKFLOW_TWO_IMAG
 |---|---|
 | `{{IMAGE_1}}` / `{{IMAGE_2}}` | Uploaded image names (put in a `LoadImage` node) |
 | `{{PROMPT}}` / `{{NEGATIVE_PROMPT}}` | Prompt text (motion hint appended automatically) |
-| `{{WIDTH}}` / `{{HEIGHT}}` | 480×832 (9:16), 832×480 (16:9), 624×624 (1:1) |
-| `{{FRAMES}}` | Frame count, 4n+1 at 16 fps (3s→49, 5s→81, 8s→129) |
-| `{{FPS}}` | 16 |
+| `{{WIDTH}}` / `{{HEIGHT}}` | From the model's `resolutions` for the chosen resolution and aspect ratio |
+| `{{FRAMES}}` | Frame count = round(duration × fps / frame_multiple) × frame_multiple + 1 |
+| `{{FPS}}` | The model's fps from `models.json` |
+| `{{STEPS}}` | The model's sampling steps from `models.json` |
 | `{{SEED}}` | Random seed |
 | `{{DURATION}}` | 3, 5 or 8 |
 | `{{MOTION}}` | 0.3 / 0.6 / 0.9 (low / medium / high) |
 | `{{FILENAME_PREFIX}}` | Output prefix for the Save node |
 
-4. Save the file here and set its name in `.env`.
+4. Save the file here and add/extend an entry in `models.json` (id, provider `"comfyui"`, workflows,
+   resolutions, fps, `frame_multiple`, files). Restart the engine.
 
 The output node may be `SaveAnimatedWEBP`, `SaveWEBM`, `SaveVideo`, VideoHelperSuite's
 `VHS_VideoCombine`, or a `SaveImage` of frames — the backend converts all of them to MP4 with FFmpeg.

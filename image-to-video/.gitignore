@@ -10,3 +10,5 @@ uploads/*
 !uploads/.gitkeep
 outputs/*
 !outputs/.gitkeep
+data/*
+!data/.gitkeep

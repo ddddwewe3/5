@@ -71,9 +71,9 @@ export default function EngineStatus({ health, healthError, provider, disabled, 
           onChange={(e) => onProvider(e.target.value as ProviderChoice)}
           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
         >
-          <option value="auto">تلقائي (ComfyUI إن كان متاحًا، وإلا وضع المعاينة)</option>
+          <option value="auto">تلقائي (أول نموذج مثبت على ComfyUI)</option>
           <option value="comfyui">ComfyUI المحلي (ذكاء اصطناعي)</option>
-          <option value="mock">وضع المعاينة (عرض شرائح، ليس ذكاءً اصطناعيًا)</option>
+          <option value="mock">عرض تجريبي (يتطلب ENABLE_DEMO_MODE، ليس ذكاءً اصطناعيًا)</option>
         </select>
       </label>
     </section>

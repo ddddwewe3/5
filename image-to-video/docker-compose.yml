@@ -10,10 +10,12 @@ services:
       COMFYUI_URL: ${COMFYUI_URL_DOCKER:-http://host.docker.internal:8188}
       UPLOAD_DIR: /data/uploads
       OUTPUT_DIR: /data/outputs
+      DATA_DIR: /data/db
       WORKFLOWS_DIR: /app/workflows
     volumes:
       - ./uploads:/data/uploads
       - ./outputs:/data/outputs
+      - ./data:/data/db
       - ./workflows:/app/workflows:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
