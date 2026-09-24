@@ -1,0 +1,29 @@
+# Runs the web app locally. ComfyUI runs on your machine (outside Docker) so it can use
+# your GPU directly; the backend reaches it through host.docker.internal.
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      COMFYUI_URL: ${COMFYUI_URL_DOCKER:-http://host.docker.internal:8188}
+      UPLOAD_DIR: /data/uploads
+      OUTPUT_DIR: /data/outputs
+      WORKFLOWS_DIR: /app/workflows
+    volumes:
+      - ./uploads:/data/uploads
+      - ./outputs:/data/outputs
+      - ./workflows:/app/workflows:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      # Bound to localhost only: the app is not exposed to your network.
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
