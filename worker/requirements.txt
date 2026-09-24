@@ -1,0 +1,12 @@
+# Local video worker dependencies. PyTorch is installed separately by setup (CUDA or CPU build).
+diffusers>=0.33.0
+transformers>=4.48.0
+accelerate>=1.2.0
+safetensors>=0.4.5
+sentencepiece>=0.2.0
+tokenizers>=0.21.0
+huggingface_hub>=0.27.0
+protobuf>=4.25.0
+numpy>=1.26.0
+pillow>=10.0.0
+tqdm>=4.66.0

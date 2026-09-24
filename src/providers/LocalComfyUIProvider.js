@@ -289,6 +289,11 @@ class LocalComfyUIProvider extends VideoProvider {
     const details = `${d.node_type ? `Node ${d.node_id} (${d.node_type})\n` : ''}${d.exception_type || ''}: ${d.exception_message || ''}\n` +
       (Array.isArray(d.traceback) ? d.traceback.join('') : d.traceback || '');
     const e = classify({ message: `${d.exception_type || ''} ${d.exception_message || ''}`, details }, 'PROVIDER_ERROR');
+    if (e.code === 'PROVIDER_ERROR' && /Loader/.test(d.node_type || '')) {
+      // A loader that cannot read its file means the model is missing, corrupt or only partly downloaded.
+      return new AppError('MODEL_MISSING', `ComfyUI could not load the model in ${d.node_type} — the file is corrupt or incomplete. ` +
+        'Re-download it (download-models.bat resumes).', { details, retryable: false });
+    }
     if (e.code === 'PROVIDER_ERROR') e.message = `ComfyUI error in ${d.node_type || 'workflow'}: ${String(d.exception_message || '').trim().slice(0, 300)}`;
     e.details = details;
     return e;

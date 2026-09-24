@@ -257,6 +257,9 @@ class LocalVideoModelProvider extends VideoProvider {
 
   async generate(req, ctx) {
     await ffmpeg.requireFfmpeg();
+    if (!this.proc || this.loadedModel !== path.basename(this.modelId()) && this.loadedModel !== this.modelId()) {
+      ctx.stage('loading_model', 0, this.proc ? 'Loading model' : 'Starting the local AI engine');
+    }
     await this.ensureWorker();
     const output = path.join(req.outDir, `segment-${req.segment || 0}.mp4`);
     const { intermediateArgs } = require('./LocalComfyUIProvider');

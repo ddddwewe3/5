@@ -185,13 +185,14 @@ def place(pipe, offload):
 
 
 def load(req):
-    import torch
-    from diffusers import DiffusionPipeline
     model = req["model"]
     if STATE["pipe"] is not None and STATE["model"] == model:
         return STATE["pipe"]
-    unload()
     job_id = req["id"]
+    emit({"id": job_id, "event": "stage", "stage": "loading_model", "message": "Starting AI engine (PyTorch + diffusers)"})
+    import torch
+    from diffusers import DiffusionPipeline
+    unload()
     emit({"id": job_id, "event": "stage", "stage": "loading_model", "message": "Loading %s" % model})
     path = download(model, req.get("models_dir"), job_id)
     device, dtype = pick_device(req.get("dtype", "auto"))
