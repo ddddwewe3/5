@@ -36,6 +36,21 @@ def human(n: float) -> str:
     return f"{n:.1f}TB"
 
 
+def safetensors_ok(path: Path) -> bool:
+    """True when a .safetensors file is complete: its header parses and the data is all there."""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            header_len = int.from_bytes(fh.read(8), "little")
+            if header_len <= 0 or 8 + header_len > size:
+                return False
+            header = json.loads(fh.read(header_len))
+        end = max((t["data_offsets"][1] for k, t in header.items() if k != "__metadata__"), default=0)
+        return size >= 8 + header_len + end
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def download(url: str, dest: Path) -> None:
     part = dest.with_suffix(dest.suffix + ".part")
     have = part.stat().st_size if part.exists() else 0
@@ -67,6 +82,8 @@ def download(url: str, dest: Path) -> None:
                 pct = f"{done / total * 100:5.1f}%" if total else ""
                 print(f"\r    {pct} {human(done)} / {human(total)}  {human(speed)}/s   ", end="", flush=True)
     print()
+    if total and done != total:
+        raise OSError(f"download incomplete ({human(done)} of {human(total)}); run the command again to resume")
     part.rename(dest)
 
 
@@ -116,8 +133,11 @@ def main() -> int:
         dest = comfy / "models" / f["folder"] / f["name"]
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.is_file() and dest.stat().st_size > 0:
-            print(f"✓ {f['folder']}/{f['name']} (already present)")
-            continue
+            if not dest.suffix == ".safetensors" or safetensors_ok(dest):
+                print(f"✓ {f['folder']}/{f['name']} (already present)")
+                continue
+            print(f"! {f['folder']}/{f['name']} is corrupted or incomplete — downloading it again")
+            dest.unlink()
         print(f"↓ {f['folder']}/{f['name']} (~{f.get('size_gb', '?')}GB)")
         for attempt in range(1, 4):
             try:

@@ -101,6 +101,41 @@ def fill_workflow(node, values: dict):
     return node
 
 
+# Known ComfyUI failure causes -> Arabic explanation with the fix.
+FAILURE_HINTS = [
+    (("outofmemory", "out of memory", "allocation on device"),
+     "نفدت ذاكرة كرت الشاشة (VRAM). جرّب دقة 480p ومدة 3 ثوانٍ، أو أغلق البرامج الأخرى، أو استخدم نموذجًا أصغر."),
+    (("header too small", "safetensorerror", "incomplete metadata", "invalid load key", "unexpected eof", "deserializing header"),
+     "أحد ملفات النموذج تالف أو لم يكتمل تنزيله. احذف الملف الناقص من مجلد ComfyUI/models ثم أعد التنزيل "
+     "(install-windows.bat أو scripts/download_models.py)."),
+    (("torch not compiled with cuda", "no cuda gpus are available", "cuda driver version is insufficient",
+      "found no nvidia driver"),
+     "PyTorch لا يرى كرت الشاشة. حدّث تعريف NVIDIA، ثم أعد تثبيت PyTorch بدعم CUDA داخل بيئة ComfyUI: "
+     "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128"),
+    (("no module named",),
+     "مكتبة ناقصة في بيئة ComfyUI. نفّذ داخل مجلد ComfyUI: pip install -r requirements.txt"),
+    (("expected all tensors to be on the same device", "cudnn", "cublas"),
+     "خطأ في كرت الشاشة أثناء الحساب. حدّث تعريف NVIDIA وأعد تشغيل ComfyUI."),
+]
+
+
+def explain_failure(raw: str) -> str:
+    """Arabic, user-facing reason for a ComfyUI execution error, including the technical cause."""
+    lowered = raw.lower()
+    for needles, message in FAILURE_HINTS:
+        if any(n in lowered.replace(" ", "") if " " not in n else n in lowered for n in needles):
+            return message
+    cause = ""
+    match = re.search(r'"exception_message":\s*"((?:[^"\\]|\\.)*)"', raw)
+    if match:
+        cause = match.group(1).encode().decode("unicode_escape", errors="ignore").strip().splitlines()[0][:200]
+    node = re.search(r'"node_type":\s*"([^"]+)"', raw)
+    if cause:
+        where = f" (العقدة {node.group(1)})" if node else ""
+        return f"فشل محرك الذكاء الاصطناعي أثناء التوليد{where}. السبب: {cause}"
+    return "فشل محرك الذكاء الاصطناعي أثناء التوليد. راجع نافذة ComfyUI لمعرفة السبب."
+
+
 def combo_options(spec) -> list | None:
     """Options of a COMBO input from /object_info, supporting old and new schema formats."""
     if not isinstance(spec, (list, tuple)) or not spec:
@@ -395,13 +430,8 @@ class ComfyUIProvider(VideoProvider):
                 raise GenerationError("انتهت مهلة انتظار محرك الذكاء الاصطناعي. جرّب مدة أقصر أو دقة أقل.")
 
             if watcher and watcher.error:
-                self._check_history(client, prompt_id)  # raises the detailed (e.g. out-of-VRAM) error
-                oom = "outofmemory" in watcher.error.lower().replace(" ", "")
-                raise GenerationError(
-                    "نفدت ذاكرة كرت الشاشة (VRAM). جرّب دقة أقل أو مدة أقصر أو نموذجًا أصغر."
-                    if oom else "فشل محرك الذكاء الاصطناعي أثناء التوليد.",
-                    watcher.error,
-                )
+                self._check_history(client, prompt_id)  # raises with the full history message if available
+                raise GenerationError(explain_failure(watcher.error), watcher.error)
             if watcher and watcher.interrupted:
                 raise GenerationCancelled()
 
@@ -438,13 +468,8 @@ class ComfyUIProvider(VideoProvider):
             return None
         status = entry.get("status", {})
         if status.get("status_str") == "error":
-            messages = json.dumps(status.get("messages", []))[:3000]
-            oom = "out of memory" in messages.lower() or "outofmemory" in messages.lower()
-            raise GenerationError(
-                "نفدت ذاكرة كرت الشاشة (VRAM). جرّب دقة أقل أو مدة أقصر أو نموذجًا أصغر."
-                if oom else "فشل محرك الذكاء الاصطناعي أثناء توليد الفيديو.",
-                messages,
-            )
+            messages = json.dumps(status.get("messages", []), ensure_ascii=False)[:3000]
+            raise GenerationError(explain_failure(messages), messages)
         if status.get("completed", True) and entry.get("outputs"):
             return entry["outputs"]
         if status.get("completed") and not entry.get("outputs"):

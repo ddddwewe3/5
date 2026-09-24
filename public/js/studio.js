@@ -736,6 +736,9 @@
         el('dt', { text: 'التاريخ' }), el('dd', { text: new Date(g.created_at * 1000).toLocaleString('ar') }),
       ),
       g.status === 'failed' && g.error ? el('div', { class: 'alert', text: g.error }) : null,
+      g.status === 'failed' && g.error_details ? el('details', { class: 'error-details' },
+        el('summary', { text: 'التفاصيل التقنية (أرسلها إذا طلبت المساعدة)' }),
+        el('pre', { class: 'cmd', text: g.error_details })) : null,
       el('div', { class: 'viewer-actions' }, actionButtons(g)),
     );
     const media = g.status === 'completed'

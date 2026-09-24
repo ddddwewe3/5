@@ -271,3 +271,14 @@ def test_animated_webp_keeps_timing_of_merged_frames(tmp_path):
     animated_image_to_mp4(find_ffmpeg(), src, dst, default_fps=16)
     count, _ = imageio_ffmpeg.count_frames_and_secs(str(dst))
     assert count == 4
+
+
+def test_corrupted_model_file_is_explained(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, pending_polls=0,
+                       history_error="safetensors_rust.SafetensorError: Error while deserializing header: header too small")
+    with comfy_client(settings, fake) as client:
+        gid = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "failed"
+    assert "تالف" in done["error"] and "download_models.py" in done["error"]
+    assert "header too small" in done["error_details"]

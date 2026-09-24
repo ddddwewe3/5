@@ -286,3 +286,7 @@ pre.cmd{direction:ltr; text-align:left; background:var(--background); border:1px
   .current{grid-template-columns:1fr}
   .modal-card{padding:18px}
 }
+
+.error-details{margin-top:10px; font-size:.8rem}
+.error-details summary{cursor:pointer; color:var(--muted-foreground)}
+.error-details pre{white-space:pre-wrap; word-break:break-word; max-height:220px}
