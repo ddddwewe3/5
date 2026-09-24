@@ -36,7 +36,7 @@ def _env_path(name: str, default: Path) -> Path:
 @dataclass
 class Settings:
     comfyui_url: str = "http://127.0.0.1:8188"
-    comfyui_timeout_seconds: int = 3600
+    comfyui_timeout_seconds: int = 10800  # slow GPUs (e.g. GTX 10xx) can need hours
     allow_remote_comfyui: bool = False
     # Generation on a CPU-only ComfyUI takes hours; it is refused unless explicitly allowed.
     allow_cpu_generation: bool = False
@@ -75,7 +75,7 @@ class Settings:
 def load_settings() -> Settings:
     return Settings(
         comfyui_url=_env("COMFYUI_URL", "http://127.0.0.1:8188").rstrip("/"),
-        comfyui_timeout_seconds=int(_env("COMFYUI_TIMEOUT_SECONDS", "3600")),
+        comfyui_timeout_seconds=int(_env("COMFYUI_TIMEOUT_SECONDS", "10800")),
         allow_remote_comfyui=_env_bool("ALLOW_REMOTE_COMFYUI", False),
         allow_cpu_generation=_env_bool("ALLOW_CPU_GENERATION", False),
         enable_demo_mode=_env_bool("ENABLE_DEMO_MODE", False),

@@ -29,8 +29,17 @@ python -m pip install --upgrade pip
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   echo "==> NVIDIA GPU found:"
-  nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
-  pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+  nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv,noheader || true
+  # CUDA 12.8 PyTorch builds dropped older GPUs (GTX 10xx, compute capability < 7.0): use cu126 there.
+  CAP="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1 | tr -d ' ')"
+  CUDA=cu128
+  if awk "BEGIN{exit !(${CAP:-9} < 7.0)}"; then CUDA=cu126; fi
+  echo "==> GPU compute capability ${CAP} -> PyTorch build ${CUDA}"
+  CHECK="import torch,sys; ok=torch.cuda.is_available() and ('sm_%d%d' % torch.cuda.get_device_capability(0)) in torch.cuda.get_arch_list(); print('torch', torch.__version__, 'gpu kernels ok:', ok); sys.exit(0 if ok else 1)"
+  if ! python -c "$CHECK" 2>/dev/null; then
+    pip install --force-reinstall torch torchvision torchaudio --index-url "https://download.pytorch.org/whl/${CUDA}"
+    python -c "$CHECK" || echo "!!  PyTorch still cannot run on this GPU. Update the NVIDIA driver and run again."
+  fi
 elif [ "$(uname -s)" = "Darwin" ]; then
   echo "==> macOS: installing PyTorch with Apple Metal (MPS). Video models run, but slowly."
   pip install torch torchvision torchaudio

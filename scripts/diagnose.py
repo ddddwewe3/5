@@ -90,7 +90,11 @@ def main() -> int:
                  "print('cuda build:', torch.version.cuda);"
                  "print('gpu:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else '-');"
                  "print('vram GB:', round(torch.cuda.get_device_properties(0).total_memory/1024**3,1) "
-                 "if torch.cuda.is_available() else 0)"], timeout=120))
+                 "if torch.cuda.is_available() else 0);"
+                 "cap=torch.cuda.get_device_capability(0) if torch.cuda.is_available() else None;"
+                 "print('compute capability:', cap);print('kernels in this torch build:', torch.cuda.get_arch_list());"
+                 "print('GPU SUPPORTED BY THIS TORCH:', bool(cap) and ('sm_%d%d' % cap) in torch.cuda.get_arch_list())"],
+                timeout=120))
     else:
         out(f"ComfyUI Python not found at {venv_python}")
 

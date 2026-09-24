@@ -26,8 +26,21 @@ if (-not (Test-Path "venv")) { py -m venv venv }
 
 if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
   Write-Host "==> NVIDIA GPU found:"
-  nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-  & .\venv\Scripts\pip.exe install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+  nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv,noheader
+  # PyTorch's CUDA 12.8 builds no longer include kernels for older GPUs (GTX 10xx "Pascal", compute
+  # capability < 7.0). Those cards need the CUDA 12.6 build, otherwise every generation fails with
+  # "no kernel image is available for execution on the device".
+  $cap = [double]((nvidia-smi --query-gpu=compute_cap --format=csv,noheader | Select-Object -First 1).Trim())
+  $cuda = if ($cap -lt 7.0) { "cu126" } else { "cu128" }
+  Write-Host "==> GPU compute capability $cap -> PyTorch build $cuda"
+  $check = "import torch,sys; ok=torch.cuda.is_available() and ('sm_%d%d' % torch.cuda.get_device_capability(0)) in torch.cuda.get_arch_list(); print('torch', torch.__version__, 'cuda', torch.version.cuda, 'gpu kernels ok:', ok); sys.exit(0 if ok else 1)"
+  & .\venv\Scripts\python.exe -c $check 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "==> Installing PyTorch ($cuda) that supports this GPU..."
+    & .\venv\Scripts\pip.exe install --force-reinstall torch torchvision torchaudio --index-url "https://download.pytorch.org/whl/$cuda"
+    & .\venv\Scripts\python.exe -c $check
+    if ($LASTEXITCODE -ne 0) { Write-Warning "PyTorch still cannot run on this GPU. Update the NVIDIA driver and run this script again." }
+  }
 } else {
   Write-Warning "No NVIDIA GPU detected. ComfyUI will install, but the studio refuses CPU-only generation because it takes hours."
   & .\venv\Scripts\pip.exe install torch torchvision torchaudio

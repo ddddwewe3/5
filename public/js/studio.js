@@ -187,7 +187,7 @@
     if (!engine.available) return { state: 'off', text: 'محرك الذكاء الاصطناعي غير مشغّل — اضغط للإعداد' };
     const gpu = engine.details && engine.details.gpu;
     const ready = state.models.filter(m => m.availability.available && !m.is_demo).length;
-    const gpuText = gpu && gpu.has_gpu ? ` · ${gpu.name.replace(/^cuda:\d+\s*/, '')}${gpu.vram_gb ? ` ${gpu.vram_gb}GB` : ''}` : '';
+    const gpuText = gpu && gpu.has_gpu ? ` · ${gpu.name.replace(/^cuda:\d+\s*/, '').replace(/\s*:\s*\w+$/, '')}${gpu.vram_gb ? ` ${gpu.vram_gb}GB` : ''}` : '';
     return { state: ready ? 'ok' : 'off', text: ready ? `المحرك متصل${gpuText} · ${ready} نموذج جاهز` : 'المحرك متصل لكن لا يوجد نموذج مثبت — اضغط للإعداد' };
   }
 

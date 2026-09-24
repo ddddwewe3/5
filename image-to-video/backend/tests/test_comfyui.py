@@ -378,3 +378,12 @@ def test_corrupted_model_file_is_detected_before_generating(settings, tmp_path):
     assert "تالفة" in model["message"] and "wan2.2_ti2v_5B_fp16.safetensors" in model["message"]
     assert response.status_code == 503
     assert fake.queued == []  # nothing was sent to ComfyUI
+
+
+def test_old_gpu_without_pytorch_kernels_is_explained():
+    from app.providers.comfyui import classify_failure
+
+    kind, message, stage = classify_failure(
+        "RuntimeError: CUDA error: no kernel image is available for execution on the device")
+    assert kind == "cuda" and stage == "generation"
+    assert "install-windows.bat" in message and "GTX 10xx" in message

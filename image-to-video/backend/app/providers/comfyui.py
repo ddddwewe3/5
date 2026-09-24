@@ -114,10 +114,11 @@ FAILURE_HINTS = [
                "error(s) in loading state_dict", "size mismatch for"),
      "أحد ملفات النموذج تالف أو ناقص أو غير متوافق. شغّل install-windows.bat مرة أخرى "
      "(يفحص الملفات ويعيد تنزيل التالف منها)، أو scripts/download_models.py."),
-    ("cuda", ("torch not compiled with cuda", "no cuda gpus are available", "cuda driver version is insufficient",
-              "found no nvidia driver", "no kernel image is available"),
-     "PyTorch لا يرى كرت الشاشة أو غير متوافق معه. حدّث تعريف NVIDIA، ثم أعد تثبيت PyTorch بدعم CUDA داخل بيئة ComfyUI: "
-     "pip install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128"),
+    ("cuda", ("no kernel image is available", "is not compatible with the current pytorch installation",
+              "torch not compiled with cuda", "no cuda gpus are available", "cuda driver version is insufficient",
+              "found no nvidia driver"),
+     "نسخة PyTorch المثبتة لا تدعم كرت الشاشة هذا (مثل GTX 10xx). شغّل install-windows.bat مرة أخرى: "
+     "يكتشف كرت الشاشة ويثبّت نسخة PyTorch المتوافقة معه تلقائيًا، ثم أعد تشغيل start-windows.bat."),
     ("module", ("no module named",),
      "مكتبة ناقصة في بيئة ComfyUI. نفّذ داخل مجلد ComfyUI: venv\\Scripts\\pip install -r requirements.txt"),
     ("gpu", ("expected all tensors to be on the same device", "cudnn_status", "cublas_status", "illegal memory access"),
