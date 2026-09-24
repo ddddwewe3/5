@@ -46,7 +46,8 @@ fi
 [ -f .env ] || { cp .env.example .env; ok "Created .env"; }
 
 step "FFmpeg"
-if have ffmpeg; then ok "$(ffmpeg -hide_banner -version | head -n1 | cut -d' ' -f1-3)"
+if [ "$NODE_OK" = 1 ] && node scripts/install-ffmpeg.js; then ok "FFmpeg ready"   # finds existing FFmpeg or installs a portable build
+elif have ffmpeg; then ok "$(ffmpeg -hide_banner -version | head -n1 | cut -d' ' -f1-3)"
 else
   if [ "$OS" = Darwin ] && have brew && ask "Install FFmpeg with Homebrew?"; then brew install ffmpeg
   elif have apt-get && ask "Install FFmpeg with apt (needs sudo)?"; then sudo apt-get update && sudo apt-get install -y ffmpeg

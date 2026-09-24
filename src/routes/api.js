@@ -248,6 +248,14 @@ router.post('/system/comfyui/test', wrap(async (req, res) => {
   }
 }));
 
+// One-click FFmpeg install (portable build into tools/ffmpeg) + progress polling.
+router.post('/system/ffmpeg/install', (req, res) => {
+  res.status(202).json(require('../media/ffmpegInstaller').start());
+});
+router.get('/system/ffmpeg/install', (req, res) => {
+  res.json(require('../media/ffmpegInstaller').status());
+});
+
 router.post('/system/preload', wrap(async (req, res) => {
   providers.get('local').preload();
   res.status(202).json({ ok: true });

@@ -41,19 +41,14 @@ async function main() {
   if (fs.existsSync(path.join(ROOT, 'node_modules', 'express'))) line(OK, 'Node packages', 'installed');
   else { required++; line(BAD, 'Node packages', 'missing', 'Run: npm install'); }
 
-  // FFmpeg
-  const ffPath = process.env.FFMPEG_PATH || (fs.existsSync(path.join(ROOT, 'tools', 'ffmpeg', 'bin', `ffmpeg${WIN ? '.exe' : ''}`))
-    ? path.join(ROOT, 'tools', 'ffmpeg', 'bin', `ffmpeg${WIN ? '.exe' : ''}`) : 'ffmpeg');
-  const ff = await run(ffPath, ['-hide_banner', '-version']);
-  if (ff.ok) {
-    const enc = await run(ffPath, ['-hide_banner', '-encoders']);
-    const hw = ['h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_videotoolbox'].filter(e => enc.stdout.includes(e));
-    line(OK, 'FFmpeg', `${ff.stdout.split('\n')[0].split(' ')[2]}${hw.length ? ` · hardware encoders listed: ${hw.join(', ')}` : ''}`);
-    const flt = await run(ffPath, ['-hide_banner', '-filters']);
-    if (!/\ssubtitles\s/.test(flt.stdout)) line(WARN, 'FFmpeg subtitles filter', 'missing (libass)', 'Install a full FFmpeg build to burn in subtitles');
+  // FFmpeg — same search as the app (tools/ffmpeg, PATH, registry PATH, winget, choco, scoop…)
+  const ffInfo = await require('../src/media/ffmpeg').detect(true);
+  if (ffInfo.available) {
+    line(OK, 'FFmpeg', `${ffInfo.version} (${ffInfo.path})${ffInfo.hwEncoder ? ` · GPU encoder: ${ffInfo.hwEncoder}` : ''}`);
+    if (ffInfo.filters && ffInfo.filters.subtitles === false) line(WARN, 'FFmpeg subtitles filter', 'missing (libass)', 'Run: node scripts/install-ffmpeg.js --force');
   } else {
     required++;
-    line(BAD, 'FFmpeg', 'not found', WIN ? 'Run setup.bat, or: winget install Gyan.FFmpeg' : 'Install ffmpeg (e.g. sudo apt install ffmpeg / brew install ffmpeg)');
+    line(BAD, 'FFmpeg', 'not found', 'Click "Install FFmpeg automatically" in the app, or run: node scripts/install-ffmpeg.js');
   }
 
   // GPU

@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { refreshStatus, onStatus } from '../state.js';
-import { icon, esc, toast, toastError, timeAgo, errorCard } from '../ui.js';
+import { icon, esc, toast, toastError, timeAgo, errorCard, ffmpegBanner, wireFfmpegInstall } from '../ui.js';
 
 const DRAFT_KEY = 'openreel.draft';
 const PLACEHOLDERS = [
@@ -230,9 +230,7 @@ export async function render(main) {
     if (!status.activeProvider && comfy.status !== 'offline') {
       parts.push(`<div class="banner err">${icon('alert')}<div class="banner-body"><strong>No video engine available</strong><p>${esc(local.message)} — see <a href="#/settings" style="text-decoration:underline">Settings</a>.</p></div></div>`);
     }
-    if (status.ffmpeg && !status.ffmpeg.available) {
-      parts.push(`<div class="banner err">${icon('alert')}<div class="banner-body"><strong>FFmpeg is not installed</strong><p>Run setup.bat, or install FFmpeg and add it to PATH.</p></div></div>`);
-    }
+    if (status.ffmpeg && !status.ffmpeg.available) parts.unshift(ffmpegBanner());
     box.innerHTML = parts.join('');
   }
 
@@ -240,6 +238,7 @@ export async function render(main) {
   if (!state.quality) state.quality = (settings && settings.defaultQuality) || 'fast';
   sync();
   const off = onStatus(renderBanner);
+  wireFfmpegInstall($('#engineBanner'), () => refreshStatus(true));
   refreshStatus().then(renderBanner);
 
   api.projects().then(list => {

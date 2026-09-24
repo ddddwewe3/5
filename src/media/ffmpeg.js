@@ -9,6 +9,9 @@ const log = require('../logger').createLogger('ffmpeg');
 
 const EXE = process.platform === 'win32' ? '.exe' : '';
 
+// Resolved absolute paths once detect() has found a working FFmpeg (see candidates()).
+const resolved = { ffmpeg: null, ffprobe: null };
+
 function bin(name) {
   const s = settings.get();
   const configured = name === 'ffmpeg' ? s.ffmpegPath : s.ffprobePath;
@@ -17,7 +20,8 @@ function bin(name) {
     const sibling = path.join(path.dirname(s.ffmpegPath), `ffprobe${EXE}`);
     if (fs.existsSync(sibling)) return sibling;
   }
-  // setup.ps1 may drop a portable FFmpeg build into tools/ffmpeg/bin
+  if (resolved[name]) return resolved[name];
+  // Portable build installed by setup or by the in-app "Install FFmpeg" button.
   const local = path.join(ROOT, 'tools', 'ffmpeg', 'bin', `${name}${EXE}`);
   if (fs.existsSync(local)) return local;
   return name;
@@ -35,51 +39,132 @@ function execText(file, args, timeout = 20000) {
   });
 }
 
+function globDirs(parent, prefix) {
+  try {
+    return fs.readdirSync(parent, { withFileTypes: true })
+      .filter(d => d.isDirectory() && d.name.toLowerCase().startsWith(prefix.toLowerCase()))
+      .map(d => path.join(parent, d.name));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * PATH as currently stored in the Windows registry. A server started from Explorer keeps the PATH
+ * from when Explorer started, so FFmpeg installed afterwards (e.g. by winget) is invisible to it
+ * until the user logs out — reading the registry finds it immediately.
+ */
+async function registryPathDirs() {
+  const dirs = [];
+  for (const key of ['HKCU\\Environment', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment']) {
+    try {
+      const { stdout } = await execText('reg', ['query', key, '/v', 'Path'], 5000);
+      const m = stdout.match(/Path\s+REG_(?:EXPAND_)?SZ\s+(.*)/i);
+      if (m) {
+        for (const d of m[1].split(';')) {
+          const expanded = d.trim().replace(/%([^%]+)%/g, (_, v) => process.env[v] || process.env[v.toUpperCase()] || '');
+          if (expanded) dirs.push(expanded);
+        }
+      }
+    } catch { /* key missing or reg unavailable */ }
+  }
+  return dirs;
+}
+
+/** Every place FFmpeg is commonly installed, in order of preference. */
+async function candidates() {
+  const list = [];
+  const s = settings.get();
+  if (s.ffmpegPath) list.push(s.ffmpegPath);
+  list.push(path.join(ROOT, 'tools', 'ffmpeg', 'bin', `ffmpeg${EXE}`));
+  list.push('ffmpeg'); // PATH of this process
+  if (process.platform === 'win32') {
+    const local = process.env.LOCALAPPDATA || '';
+    const home = process.env.USERPROFILE || '';
+    const pf = process.env.ProgramFiles || 'C:\\Program Files';
+    for (const dir of await registryPathDirs()) list.push(path.join(dir, 'ffmpeg.exe'));
+    list.push(path.join(local, 'Microsoft', 'WinGet', 'Links', 'ffmpeg.exe'));
+    for (const pkg of [...globDirs(path.join(local, 'Microsoft', 'WinGet', 'Packages'), 'Gyan.FFmpeg'),
+      ...globDirs(path.join(local, 'Microsoft', 'WinGet', 'Packages'), 'BtbN.FFmpeg')]) {
+      for (const sub of globDirs(pkg, 'ffmpeg')) list.push(path.join(sub, 'bin', 'ffmpeg.exe'));
+    }
+    list.push(path.join(process.env.ProgramData || 'C:\\ProgramData', 'chocolatey', 'bin', 'ffmpeg.exe'));
+    list.push(path.join(home, 'scoop', 'shims', 'ffmpeg.exe'), path.join(home, 'scoop', 'apps', 'ffmpeg', 'current', 'bin', 'ffmpeg.exe'));
+    list.push('C:\\ffmpeg\\bin\\ffmpeg.exe', path.join(pf, 'ffmpeg', 'bin', 'ffmpeg.exe'), path.join(home, 'ffmpeg', 'bin', 'ffmpeg.exe'));
+  } else {
+    // Apps started from a desktop launcher often miss Homebrew / /usr/local on PATH.
+    list.push('/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', '/snap/bin/ffmpeg');
+  }
+  return [...new Set(list)].filter(c => c === 'ffmpeg' || fs.existsSync(c));
+}
+
 let detected = null;
 let detectedAt = 0;
 
 /** Detects FFmpeg, its filters and which H.264 hardware encoder actually works on this machine. */
 async function detect(force = false) {
-  if (!force && detected && Date.now() - detectedAt < 10 * 60 * 1000) return detected;
-  const ffmpeg = bin('ffmpeg');
-  const info = { available: false, path: ffmpeg, version: null, hwEncoder: null, encoders: {}, filters: {}, error: null };
-  try {
-    const { stdout } = await execText(ffmpeg, ['-hide_banner', '-version']);
-    info.version = (stdout.split('\n')[0] || '').replace(/^ffmpeg version\s*/, '').split(' ')[0];
+  // A missing FFmpeg is re-checked quickly so an install is noticed without restarting.
+  const ttl = detected && detected.available ? 10 * 60 * 1000 : 10 * 1000;
+  if (!force && detected && Date.now() - detectedAt < ttl) return detected;
+  const info = { available: false, path: null, version: null, hwEncoder: null, encoders: {}, filters: {}, error: null, searched: [] };
+  let ffmpeg = null;
+  for (const cand of await candidates()) {
+    info.searched.push(cand);
+    try {
+      const { stdout } = await execText(cand, ['-hide_banner', '-version']);
+      ffmpeg = cand;
+      info.version = (stdout.split('\n')[0] || '').replace(/^ffmpeg version\s*/, '').split(' ')[0];
+      break;
+    } catch { /* try the next location */ }
+  }
+  if (!ffmpeg) {
+    info.error = `FFmpeg was not found. Searched: ${info.searched.join(', ')}`;
+    resolved.ffmpeg = null;
+    resolved.ffprobe = null;
+  } else {
     info.available = true;
-    const enc = await execText(ffmpeg, ['-hide_banner', '-encoders']);
-    for (const name of ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_videotoolbox', 'aac']) {
-      info.encoders[name] = new RegExp(`\\s${name}\\s`).test(enc.stdout);
-    }
-    const flt = await execText(ffmpeg, ['-hide_banner', '-filters']);
-    for (const name of ['subtitles', 'xfade', 'drawtext', 'tpad', 'boxblur', 'amix']) {
-      info.filters[name] = new RegExp(`\\s${name}\\s`).test(flt.stdout);
-    }
-    // A listed hardware encoder is not necessarily usable (no GPU / driver) — try a tiny encode.
-    for (const name of ['h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_videotoolbox']) {
-      if (!info.encoders[name]) continue;
-      try {
-        await execText(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.2',
-          '-c:v', name, '-pix_fmt', 'yuv420p', '-f', 'null', '-'], 15000);
-        info.hwEncoder = name;
-        break;
-      } catch {
-        /* not usable on this machine */
+    info.path = ffmpeg;
+    resolved.ffmpeg = ffmpeg;
+    const sibling = path.join(path.dirname(ffmpeg), `ffprobe${EXE}`);
+    resolved.ffprobe = ffmpeg !== 'ffmpeg' && fs.existsSync(sibling) ? sibling : null;
+    try {
+      const enc = await execText(ffmpeg, ['-hide_banner', '-encoders']);
+      for (const name of ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_videotoolbox', 'aac']) {
+        info.encoders[name] = new RegExp(`\\s${name}\\s`).test(enc.stdout);
       }
+      const flt = await execText(ffmpeg, ['-hide_banner', '-filters']);
+      for (const name of ['subtitles', 'xfade', 'drawtext', 'tpad', 'boxblur', 'amix']) {
+        info.filters[name] = new RegExp(`\\s${name}\\s`).test(flt.stdout);
+      }
+      // A listed hardware encoder is not necessarily usable (no GPU / driver) — try a tiny encode.
+      for (const name of ['h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_videotoolbox']) {
+        if (!info.encoders[name]) continue;
+        try {
+          await execText(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.2',
+            '-c:v', name, '-pix_fmt', 'yuv420p', '-f', 'null', '-'], 15000);
+          info.hwEncoder = name;
+          break;
+        } catch {
+          /* not usable on this machine */
+        }
+      }
+    } catch (err) {
+      info.error = err.stderr || err.message;
     }
     try {
       await execText(bin('ffprobe'), ['-hide_banner', '-version']);
       info.ffprobe = true;
     } catch {
       info.ffprobe = false;
-      info.error = 'ffprobe not found next to ffmpeg';
+      info.error = `ffprobe was not found next to ${ffmpeg}`;
     }
-  } catch (err) {
-    info.error = err.code === 'ENOENT' ? 'FFmpeg not found on PATH' : (err.stderr || err.message);
   }
+  delete info.searched;
   detected = info;
   detectedAt = Date.now();
-  log.info(`FFmpeg ${info.available ? info.version : 'MISSING'}; hardware encoder: ${info.hwEncoder || 'none (libx264)'}`);
+  log.info(info.available
+    ? `FFmpeg ${info.version} (${info.path}); hardware encoder: ${info.hwEncoder || 'none (libx264)'}`
+    : `FFmpeg MISSING — ${info.error}`);
   return info;
 }
 

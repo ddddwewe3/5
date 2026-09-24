@@ -122,30 +122,14 @@ if (-not (Test-Path (Join-Path $Root '.env'))) {
 
 # -- 3. FFmpeg -----------------------------------------------------------------
 Write-Step 'FFmpeg (video encoding)'
-$localFfmpeg = Join-Path $Root 'tools\ffmpeg\bin\ffmpeg.exe'
-if ((Test-Cmd 'ffmpeg') -or (Test-Path $localFfmpeg)) {
-  Write-Ok 'FFmpeg found'
+if ($nodeOk) {
+  # Portable build into tools\ffmpeg (no PATH or admin rights needed); skipped when FFmpeg already works.
+  & node ([IO.Path]::Combine($Root, 'scripts', 'install-ffmpeg.js')) | Out-Host
+  if ($LASTEXITCODE -eq 0) { Write-Ok 'FFmpeg ready' }
+  elseif ((Install-Winget 'Gyan.FFmpeg' 'FFmpeg') -and (Test-Cmd 'ffmpeg')) { Write-Ok 'FFmpeg installed with winget' }
+  else { Write-Bad 'FFmpeg could not be installed. Start the app and click "Install FFmpeg automatically", or install it from https://www.gyan.dev/ffmpeg/builds/' }
 } else {
-  $done = $false
-  if (Ask 'Install FFmpeg now?') {
-    if ((Install-Winget 'Gyan.FFmpeg' 'FFmpeg') -and (Test-Cmd 'ffmpeg')) { $done = $true }
-    if (-not $done -and $IsWin) {
-      Write-Host '  Downloading portable FFmpeg build (gyan.dev)...'
-      try {
-        $zip = Join-Path $env:TEMP 'ffmpeg-release-full.zip'
-        Invoke-WebRequest 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip' -OutFile $zip -UseBasicParsing
-        $dest = Join-Path $Root 'tools'
-        New-Item -ItemType Directory -Force $dest | Out-Null
-        Expand-Archive $zip -DestinationPath $dest -Force
-        $extracted = Get-ChildItem $dest -Directory | Where-Object { $_.Name -like 'ffmpeg-*' } | Select-Object -First 1
-        if (Test-Path (Join-Path $dest 'ffmpeg')) { Remove-Item -Recurse -Force (Join-Path $dest 'ffmpeg') }
-        Rename-Item $extracted.FullName 'ffmpeg'
-        Remove-Item $zip -Force
-        $done = Test-Path $localFfmpeg
-      } catch { Write-Note "Portable download failed: $($_.Exception.Message)" }
-    }
-  }
-  if ($done) { Write-Ok 'FFmpeg installed' } else { Write-Bad 'FFmpeg is required. Install it from https://www.gyan.dev/ffmpeg/builds/ and add its bin folder to PATH.' }
+  Write-Bad 'FFmpeg needs Node.js first (see above).'
 }
 
 # -- 4. GPU --------------------------------------------------------------------

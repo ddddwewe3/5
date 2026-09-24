@@ -12,6 +12,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const media = require('../src/media/ffmpeg');
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i >= 0 ? process.argv[i + 1] : d; };
 const BASE = arg('url', 'http://localhost:3000').replace(/\/$/, '');
 const DURATION = Number(arg('duration', 3));
@@ -58,12 +59,12 @@ async function verifyMp4(id, label, { expectAudio = false } = {}) {
   fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
   if (!/attachment/.test(cd)) fail(`${label}: download is not served as an attachment`);
   try {
-    const out = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', file]).toString());
+    const out = JSON.parse(execFileSync(media.bin('ffprobe'), ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', file]).toString());
     const v = out.streams.find(s => s.codec_type === 'video');
     const a = out.streams.find(s => s.codec_type === 'audio');
     if (!v || v.codec_name !== 'h264') return fail(`${label}: not an H.264 video`);
     if (expectAudio && !a) return fail(`${label}: missing audio track`);
-    execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'null', '-']); // full decode = file is intact
+    execFileSync(media.bin('ffmpeg'), ['-v', 'error', '-i', file, '-f', 'null', '-']); // full decode = file is intact
     pass(`${label}: valid MP4 ${v.width}×${v.height} ${v.codec_name}/${v.pix_fmt}${a ? ` + ${a.codec_name}` : ''}, ${Number(out.format.duration).toFixed(2)}s, ${(fs.statSync(file).size / 1e6).toFixed(1)} MB, downloaded as ${cd.split('filename=')[1]}`);
   } catch (err) {
     fail(`${label}: ffprobe/ffmpeg check failed: ${err.message}`);
@@ -74,6 +75,7 @@ async function verifyMp4(id, label, { expectAudio = false } = {}) {
 
 async function main() {
   console.log(`\nOpenReel Studio end-to-end test → ${BASE}\n`);
+  await media.detect(true);
   const status = await api('GET', '/api/system/status?refresh=1').catch(e => { console.error(`Server not reachable: ${e.message}`); process.exit(1); });
   pass(`API reachable (Node ${status.app.node}, FFmpeg ${status.ffmpeg.version || 'missing'})`);
   const c = status.providers.comfyui;

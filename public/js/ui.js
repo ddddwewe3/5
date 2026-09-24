@@ -191,3 +191,55 @@ export const STAGE_LABELS = [
   ['queued', 'Queued'], ['loading_model', 'Loading model'], ['generating', 'Generating'],
   ['processing', 'Processing'], ['encoding', 'Encoding'], ['complete', 'Complete'],
 ];
+
+// ── One-click FFmpeg install ──────────────────────────────────────────────────
+export function ffmpegBanner() {
+  return `<div class="banner err">${icon('alert')}<div class="banner-body"><strong>FFmpeg is not installed</strong>
+    <p>FFmpeg encodes your videos. Install it with one click — free and open source, about 200 MB, no restart needed.</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary sm" data-action="install-ffmpeg">${icon('download')} Install FFmpeg automatically</button>
+      <span class="small" data-ffmpeg-progress></span>
+    </div></div></div>`;
+}
+
+let ffmpegPoll = null;
+
+/** Wires every [data-action=install-ffmpeg] button inside `root`; calls onDone() when FFmpeg works. */
+export function wireFfmpegInstall(root, onDone) {
+  const show = st => {
+    const el = root.querySelector('[data-ffmpeg-progress]');
+    const btn = root.querySelector('[data-action="install-ffmpeg"]');
+    if (!el) return;
+    if (st.status === 'downloading') {
+      const mb = (st.downloaded / 1e6).toFixed(0);
+      el.textContent = st.total ? `Downloading ${Math.round((st.downloaded / st.total) * 100)}% (${mb} / ${(st.total / 1e6).toFixed(0)} MB) from ${st.source}…` : `Downloading ${mb} MB…`;
+    } else if (st.status === 'extracting') el.textContent = 'Unpacking…';
+    else if (st.status === 'error') el.innerHTML = `<span style="color:#fecaca">${esc(st.error)}</span> — or install manually: <code>winget install Gyan.FFmpeg</code>`;
+    else el.textContent = '';
+    if (btn) btn.disabled = st.status === 'downloading' || st.status === 'extracting';
+  };
+  const poll = () => {
+    clearInterval(ffmpegPoll);
+    ffmpegPoll = setInterval(async () => {
+      try {
+        const st = await (await fetch('/api/system/ffmpeg/install')).json();
+        show(st);
+        if (st.status === 'done' || st.status === 'error') {
+          clearInterval(ffmpegPoll);
+          if (st.status === 'done') { toast('FFmpeg installed — you can generate videos now.', { type: 'ok' }); onDone(); }
+        }
+      } catch { /* server restarting */ }
+    }, 1000);
+  };
+  root.addEventListener('click', async e => {
+    if (!e.target.closest('[data-action="install-ffmpeg"]')) return;
+    try {
+      show(await (await fetch('/api/system/ffmpeg/install', { method: 'POST' })).json());
+      poll();
+    } catch (err) { toastError(err); }
+  });
+  // Resume showing progress if an install is already running (e.g. after a page reload).
+  fetch('/api/system/ffmpeg/install').then(r => r.json()).then(st => {
+    if (st.status === 'downloading' || st.status === 'extracting') { show(st); poll(); }
+  }).catch(() => {});
+}

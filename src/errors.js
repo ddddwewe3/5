@@ -38,7 +38,7 @@ const ERROR_INFO = {
     title: 'FFmpeg is not installed',
     message: 'FFmpeg is required to encode videos but was not found.',
     reasons: ['FFmpeg is not installed or not on PATH'],
-    fixes: ['Run setup.bat (installs FFmpeg with winget) or install FFmpeg manually and add it to PATH', 'Or set FFMPEG_PATH in .env'],
+    fixes: ['Click "Install FFmpeg automatically" on the Create or Settings page (one click, no restart)', 'Or run setup.bat, or: winget install Gyan.FFmpeg', 'Or set FFMPEG_PATH in .env to your ffmpeg.exe'],
     retryable: false,
   },
   FFMPEG_ERROR: {

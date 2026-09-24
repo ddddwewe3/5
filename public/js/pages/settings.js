@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { refreshStatus } from '../state.js';
-import { icon, esc, toast, toastError } from '../ui.js';
+import { icon, esc, toast, toastError, ffmpegBanner, wireFfmpegInstall } from '../ui.js';
 
 const STATUS_BADGE = {
   online: '<span class="badge ok">Online</span>',
@@ -62,6 +62,7 @@ export async function render(main) {
     const comfyEngines = (comfy.engines || []);
     const ff = status.ffmpeg;
     body.innerHTML = `
+    ${ff.available ? '' : ffmpegBanner()}
     <div class="settings-grid">
       <section class="card">
         <h2>${icon('cpu')} Video engine</h2>
@@ -243,6 +244,7 @@ export async function render(main) {
     }
   });
   body.addEventListener('change', e => { if (e.target.id === 'logLevel') loadLogs(); });
+  wireFfmpegInstall(body, () => load(true).catch(toastError));
   main.querySelector('#refreshAll').addEventListener('click', async () => {
     body.innerHTML = '<div class="empty"><span class="spinner"></span> Checking engines, GPU and FFmpeg…</div>';
     await load(true).catch(toastError);
