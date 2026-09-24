@@ -308,7 +308,30 @@ async function finalizeSegments(inputs, output, { width, height, fps, signal, on
   return output;
 }
 
+const webmJobs = new Map();
+
+/**
+ * WebM (VP9/Opus) copy of an MP4 for browsers without an H.264 decoder (some Linux Chromium /
+ * Firefox builds). Created on demand, cached next to the MP4; H.264-capable browsers never ask.
+ */
+function webmPreview(input) {
+  const output = input.replace(/\.mp4$/i, '.preview.webm');
+  if (fs.existsSync(output)) return Promise.resolve(output);
+  if (webmJobs.has(output)) return webmJobs.get(output);
+  const tmp = `${output}.part.webm`;
+  const job = (async () => {
+    const info = await probe(input);
+    await run(['-i', input, '-c:v', 'libvpx-vp9', '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1', '-b:v', '0', '-crf', '33',
+      ...(info.hasAudio ? ['-c:a', 'libopus', '-b:a', '128k'] : ['-an']), tmp], { durationSec: info.durationSec });
+    fs.renameSync(tmp, output);
+    return output;
+  })().finally(() => webmJobs.delete(output));
+  webmJobs.set(output, job);
+  return job;
+}
+
 module.exports = {
+  webmPreview,
   bin, detect, requireFfmpeg, encoderArgs, run, probe, fitFilter, outputSize, even,
   extractFrame, thumbnail, normalize, encodeSequence, finalizeSegments,
 };

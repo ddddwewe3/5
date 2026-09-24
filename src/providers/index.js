@@ -48,10 +48,10 @@ async function resolve(mode, preferred) {
   throw new AppError('NO_ENGINE', null, { details });
 }
 
-async function healthAll() {
+async function healthAll(force = false) {
   const entries = await Promise.all(Object.values(providers).map(async p => {
     try {
-      return await p.health();
+      return await p.health(force);
     } catch (err) {
       return { id: p.id, label: p.label, kind: p.kind, available: false, status: 'error', message: err.message, details: err.details };
     }

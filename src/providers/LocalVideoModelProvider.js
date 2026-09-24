@@ -85,8 +85,8 @@ class LocalVideoModelProvider extends VideoProvider {
     return result;
   }
 
-  async health() {
-    const info = await this.probe(true);
+  async health(force = false) {
+    const info = await this.probe(force);
     const model = this.modelId();
     const base = { id: this.id, label: this.label, kind: this.kind, model, recommended: LOCAL_MODELS };
     if (!info.ok) {

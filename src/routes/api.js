@@ -109,6 +109,13 @@ router.get('/video/:id/download', (req, res) => {
   res.download(file, name);
 });
 
+router.get('/video/:id/preview.webm', wrap(async (req, res) => {
+  const info = mediaInfo(req.params.id);
+  const file = info.url && projects.mediaPath(info.projectId, info.url);
+  if (!file || !fs.existsSync(file)) throw new AppError('NOT_FOUND', 'Video not ready');
+  res.sendFile(await ffmpeg.webmPreview(file));
+}));
+
 router.get('/videos', (req, res) => {
   res.json(projects.allVideos());
 });
@@ -209,7 +216,8 @@ router.post('/tts/preview', wrap(async (req, res) => {
 
 // ── System / settings ───────────────────────────────────────────────────────────────────────
 router.get('/system/status', wrap(async (req, res) => {
-  const [health, ff, voices] = await Promise.all([providers.healthAll(), ffmpeg.detect(req.query.refresh !== undefined), tts.detectEngines()]);
+  const refresh = req.query.refresh !== undefined;
+  const [health, ff, voices] = await Promise.all([providers.healthAll(refresh), ffmpeg.detect(refresh), tts.detectEngines(refresh)]);
   const s = settings.get();
   let active = null;
   if (s.provider === 'auto') active = health.comfyui.available ? 'comfyui' : health.local.available ? 'local' : null;
