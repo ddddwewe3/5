@@ -28,6 +28,8 @@ from .base import (
     GenerationError,
     GenerationRequest,
     ModelAvailability,
+    ModelLoadError,
+    OutOfVRAMError,
     ProgressCallback,
     ProviderStatus,
     ProviderUnavailable,
@@ -101,39 +103,84 @@ def fill_workflow(node, values: dict):
     return node
 
 
-# Known ComfyUI failure causes -> Arabic explanation with the fix.
+# Known ComfyUI failure causes -> (kind, Arabic explanation with the fix).
+OOM_NEEDLES = ("outofmemory", "out of memory", "allocation on device", "cuda error: out of memory",
+               "not enough memory", "defaultcpuallocator")
 FAILURE_HINTS = [
-    (("outofmemory", "out of memory", "allocation on device"),
+    ("oom", OOM_NEEDLES,
      "نفدت ذاكرة كرت الشاشة (VRAM). جرّب دقة 480p ومدة 3 ثوانٍ، أو أغلق البرامج الأخرى، أو استخدم نموذجًا أصغر."),
-    (("header too small", "safetensorerror", "incomplete metadata", "invalid load key", "unexpected eof", "deserializing header"),
-     "أحد ملفات النموذج تالف أو لم يكتمل تنزيله. احذف الملف الناقص من مجلد ComfyUI/models ثم أعد التنزيل "
-     "(install-windows.bat أو scripts/download_models.py)."),
-    (("torch not compiled with cuda", "no cuda gpus are available", "cuda driver version is insufficient",
-      "found no nvidia driver"),
-     "PyTorch لا يرى كرت الشاشة. حدّث تعريف NVIDIA، ثم أعد تثبيت PyTorch بدعم CUDA داخل بيئة ComfyUI: "
-     "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128"),
-    (("no module named",),
-     "مكتبة ناقصة في بيئة ComfyUI. نفّذ داخل مجلد ComfyUI: pip install -r requirements.txt"),
-    (("expected all tensors to be on the same device", "cudnn", "cublas"),
+    ("model", ("header too small", "safetensorerror", "incomplete metadata", "invalid load key", "unexpected eof",
+               "deserializing header", "error while deserializing", "file too small", "could not detect model type",
+               "error(s) in loading state_dict", "size mismatch for"),
+     "أحد ملفات النموذج تالف أو ناقص أو غير متوافق. شغّل install-windows.bat مرة أخرى "
+     "(يفحص الملفات ويعيد تنزيل التالف منها)، أو scripts/download_models.py."),
+    ("cuda", ("torch not compiled with cuda", "no cuda gpus are available", "cuda driver version is insufficient",
+              "found no nvidia driver", "no kernel image is available"),
+     "PyTorch لا يرى كرت الشاشة أو غير متوافق معه. حدّث تعريف NVIDIA، ثم أعد تثبيت PyTorch بدعم CUDA داخل بيئة ComfyUI: "
+     "pip install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128"),
+    ("module", ("no module named",),
+     "مكتبة ناقصة في بيئة ComfyUI. نفّذ داخل مجلد ComfyUI: venv\\Scripts\\pip install -r requirements.txt"),
+    ("gpu", ("expected all tensors to be on the same device", "cudnn_status", "cublas_status", "illegal memory access"),
      "خطأ في كرت الشاشة أثناء الحساب. حدّث تعريف NVIDIA وأعد تشغيل ComfyUI."),
 ]
+LOADER_NODES = {"UNETLoader", "CLIPLoader", "VAELoader", "CLIPVisionLoader", "CheckpointLoaderSimple", "UnetLoaderGGUF"}
 
 
-def explain_failure(raw: str) -> str:
-    """Arabic, user-facing reason for a ComfyUI execution error, including the technical cause."""
+def _matches(needle: str, lowered: str, compact: str) -> bool:
+    return (needle in lowered) if " " in needle else (needle in compact)
+
+
+def classify_failure(raw: str) -> tuple[str, str, str]:
+    """(kind, Arabic user-facing message, stage) for a ComfyUI execution error."""
     lowered = raw.lower()
-    for needles, message in FAILURE_HINTS:
-        if any(n in lowered.replace(" ", "") if " " not in n else n in lowered for n in needles):
-            return message
+    compact = lowered.replace(" ", "")
+    node = re.search(r'"node_type":\s*"([^"]+)"', raw)
+    node_type = node.group(1) if node else ""
+    for kind, needles, message in FAILURE_HINTS:
+        if any(_matches(n, lowered, compact) for n in needles):
+            stage = "generation" if kind == "oom" else ("model_loading" if kind == "model" else "generation")
+            return kind, message, stage
     cause = ""
     match = re.search(r'"exception_message":\s*"((?:[^"\\]|\\.)*)"', raw)
     if match:
-        cause = match.group(1).encode().decode("unicode_escape", errors="ignore").strip().splitlines()[0][:200]
-    node = re.search(r'"node_type":\s*"([^"]+)"', raw)
+        try:
+            cause = json.loads(f'"{match.group(1)}"')
+        except ValueError:
+            cause = match.group(1)
+        cause = (cause.strip().splitlines() or [""])[0][:200]
+    stage = "model_loading" if node_type in LOADER_NODES else "generation"
     if cause:
-        where = f" (العقدة {node.group(1)})" if node else ""
-        return f"فشل محرك الذكاء الاصطناعي أثناء التوليد{where}. السبب: {cause}"
-    return "فشل محرك الذكاء الاصطناعي أثناء التوليد. راجع نافذة ComfyUI لمعرفة السبب."
+        where = f" (العقدة {node_type})" if node_type else ""
+        return "other", f"فشل محرك الذكاء الاصطناعي أثناء التوليد{where}. السبب: {cause}", stage
+    return "other", "فشل محرك الذكاء الاصطناعي أثناء التوليد. التفاصيل التقنية تحتوي سجل ComfyUI.", stage
+
+
+def explain_failure(raw: str) -> str:
+    return classify_failure(raw)[1]
+
+
+def failure_error(raw: str, details: str) -> GenerationError:
+    kind, message, stage = classify_failure(raw)
+    if kind == "oom":
+        return OutOfVRAMError(message, details)
+    if stage == "model_loading":
+        return ModelLoadError(message, details)
+    return GenerationError(message, details, stage=stage)
+
+
+def safetensors_complete(path: Path) -> bool:
+    """True when a .safetensors file's header parses and all tensor data is present."""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            header_len = int.from_bytes(fh.read(8), "little")
+            if header_len <= 0 or 8 + header_len > size:
+                return False
+            header = json.loads(fh.read(header_len))
+        end = max((t["data_offsets"][1] for k, t in header.items() if k != "__metadata__"), default=0)
+        return size >= 8 + header_len + end
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
 
 
 def combo_options(spec) -> list | None:
@@ -225,6 +272,41 @@ class ComfyUIProvider(VideoProvider):
                 return None
         return self._cached("object_info", 20, load)
 
+    def _folder_paths(self) -> dict | None:
+        def load():
+            try:
+                with self._client(timeout=5) as client:
+                    response = client.get("/internal/folder_paths")
+                    response.raise_for_status()
+                    return response.json()
+            except (httpx.HTTPError, ValueError):
+                return None
+        return self._cached("folder_paths", 20, load)
+
+    def _corrupted_files(self, workflow: dict) -> list[dict]:
+        """Model files that exist on this machine but are damaged/incomplete (only checkable when ComfyUI
+        runs on the same machine as the engine)."""
+        folders = self._folder_paths()
+        if not isinstance(folders, dict):
+            return []
+        broken = []
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            folder = LOADER_FOLDERS.get(node.get("class_type", ""))
+            if not folder:
+                continue
+            for value in node.get("inputs", {}).values():
+                if not isinstance(value, str) or not value.endswith(".safetensors"):
+                    continue
+                for base in folders.get(folder) or []:
+                    path = Path(base) / value
+                    if path.is_file():
+                        if not safetensors_complete(path):
+                            broken.append({"kind": "corrupt", "name": value, "folder": folder, "path": str(path)})
+                        break
+        return broken
+
     def workflow_path(self, filename: str) -> Path:
         return self.settings.workflows_dir / Path(filename).name
 
@@ -232,13 +314,13 @@ class ComfyUIProvider(VideoProvider):
         try:
             workflow = json.loads(path.read_text(encoding="utf-8"))
         except OSError as exc:
-            raise GenerationError(f"ملف سير العمل {path.name} غير موجود في مجلد workflows.") from exc
+            raise GenerationError(f"ملف سير العمل {path.name} غير موجود في مجلد workflows.", stage="preprocessing") from exc
         except json.JSONDecodeError as exc:
-            raise GenerationError(f"تعذّرت قراءة ملف سير العمل {path.name}: الملف ليس JSON صالحًا.") from exc
+            raise GenerationError(f"تعذّرت قراءة ملف سير العمل {path.name}: الملف ليس JSON صالحًا.", stage="preprocessing") from exc
         if not isinstance(workflow, dict) or "nodes" in workflow or "links" in workflow:
             raise GenerationError(
                 f"ملف سير العمل {path.name} محفوظ بصيغة الواجهة وليس بصيغة API. "
-                "في ComfyUI فعّل Dev mode ثم استخدم Export (API)."
+                "في ComfyUI فعّل Dev mode ثم استخدم Export (API).", stage="preprocessing"
             )
         workflow.pop("_comment", None)
         return workflow
@@ -301,7 +383,8 @@ class ComfyUIProvider(VideoProvider):
         for mode in model.modes:
             path = self.workflow_path(model.workflows[mode])
             try:
-                missing = find_missing(self.load_workflow(path), info)
+                workflow = self.load_workflow(path)
+                missing = find_missing(workflow, info) or self._corrupted_files(workflow)
             except GenerationError as exc:
                 missing = [{"kind": "workflow", "name": path.name, "error": exc.message}]
             modes[mode] = {"available": not missing, "missing": missing}
@@ -310,6 +393,13 @@ class ComfyUIProvider(VideoProvider):
             return ModelAvailability(True, "النموذج مثبت وجاهز.", modes)
         missing_files = sorted({m["name"] for mode in modes.values() for m in mode["missing"] if m["kind"] == "file"})
         missing_nodes = sorted({m["name"] for mode in modes.values() for m in mode["missing"] if m["kind"] == "node"})
+        corrupt = sorted({m["name"] for mode in modes.values() for m in mode["missing"] if m["kind"] == "corrupt"})
+        if corrupt and not missing_nodes and not missing_files:
+            return ModelAvailability(False, "ملفات النموذج تالفة أو لم يكتمل تنزيلها: " + "، ".join(corrupt), modes, [
+                "شغّل install-windows.bat مرة أخرى: يفحص الملفات ويعيد تنزيل التالف منها تلقائيًا.",
+                f"أو: python scripts/download_models.py --model {model.id} --comfyui <مسار ComfyUI>",
+                "ثم أعد تشغيل ComfyUI وحدّث الصفحة.",
+            ])
         if missing_nodes:
             message = "ComfyUI يحتاج تحديثًا: العُقد التالية غير موجودة: " + "، ".join(missing_nodes)
         else:
@@ -330,7 +420,7 @@ class ComfyUIProvider(VideoProvider):
             raise ProviderUnavailable(status.message, status.setup_steps)
         workflow_file = request.model.workflows.get(request.mode)
         if not workflow_file:
-            raise GenerationError("هذا النموذج لا يدعم وضع التوليد المطلوب.")
+            raise GenerationError("هذا النموذج لا يدعم وضع التوليد المطلوب.", stage="preprocessing")
         workflow = self.load_workflow(self.workflow_path(workflow_file))
 
         progress(0.02, "جارٍ تجهيز الطلب لمحرك الذكاء الاصطناعي...")
@@ -376,7 +466,7 @@ class ComfyUIProvider(VideoProvider):
             response.raise_for_status()
             data = response.json()
         except (httpx.HTTPError, ValueError, OSError) as exc:
-            raise GenerationError("تعذّر إرسال الصورة إلى محرك الذكاء الاصطناعي.", str(exc)) from exc
+            raise GenerationError("تعذّر إرسال الصورة إلى محرك الذكاء الاصطناعي (ComfyUI).", str(exc), stage="upload") from exc
         subfolder = data.get("subfolder") or ""
         return f"{subfolder}/{data['name']}" if subfolder else data["name"]
 
@@ -384,16 +474,17 @@ class ComfyUIProvider(VideoProvider):
         try:
             response = client.post("/prompt", json={"prompt": workflow, "client_id": client_id})
         except httpx.HTTPError as exc:
-            raise GenerationError("تعذّر الاتصال بمحرك الذكاء الاصطناعي لإرسال الطلب.", str(exc)) from exc
+            raise GenerationError("تعذّر الاتصال بمحرك الذكاء الاصطناعي (ComfyUI) لإرسال الطلب.", str(exc), stage="engine_connection") from exc
         if response.status_code >= 400:
             details = response.text[:3000]
             hint = ""
             if "value_not_in_list" in details or "not found" in details.lower():
                 hint = " تأكد من تنزيل ملفات النموذج بالأسماء المطلوبة ومن تحديث ComfyUI."
-            raise GenerationError("رفض ComfyUI سير العمل." + hint, details)
+            raise GenerationError("رفض ComfyUI سير العمل." + hint, details,
+                                  stage="model_loading" if hint else "preprocessing")
         data = response.json()
         if data.get("node_errors"):
-            raise GenerationError("سير العمل يحتوي على أخطاء في العُقد.", json.dumps(data["node_errors"])[:3000])
+            raise GenerationError("سير العمل يحتوي على أخطاء في العُقد.", json.dumps(data["node_errors"])[:3000], stage="preprocessing")
         return data["prompt_id"]
 
     def cancel_prompt(self, client: httpx.Client, prompt_id: str) -> None:
@@ -431,7 +522,7 @@ class ComfyUIProvider(VideoProvider):
 
             if watcher and watcher.error:
                 self._check_history(client, prompt_id)  # raises with the full history message if available
-                raise GenerationError(explain_failure(watcher.error), watcher.error)
+                raise self._execution_failure(client, watcher.error)
             if watcher and watcher.interrupted:
                 raise GenerationCancelled()
 
@@ -462,19 +553,37 @@ class ComfyUIProvider(VideoProvider):
             response.raise_for_status()
             history = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            raise GenerationError("انقطع الاتصال بمحرك الذكاء الاصطناعي أثناء التوليد.", str(exc)) from exc
+            raise GenerationError("انقطع الاتصال بمحرك الذكاء الاصطناعي (ComfyUI) أثناء التوليد. هل أُغلقت نافذة ComfyUI؟", str(exc), stage="engine_connection") from exc
         entry = history.get(prompt_id)
         if not entry:
             return None
         status = entry.get("status", {})
         if status.get("status_str") == "error":
             messages = json.dumps(status.get("messages", []), ensure_ascii=False)[:3000]
-            raise GenerationError(explain_failure(messages), messages)
+            raise self._execution_failure(client, messages)
         if status.get("completed", True) and entry.get("outputs"):
             return entry["outputs"]
         if status.get("completed") and not entry.get("outputs"):
-            raise GenerationError("انتهى التوليد بدون ناتج. تأكد أن سير العمل يحتوي على عقدة حفظ (Save).")
+            raise GenerationError("انتهى التوليد بدون ناتج. تأكد أن سير العمل يحتوي على عقدة حفظ (Save).", stage="output")
         return None
+
+    def comfy_log_tail(self, client: httpx.Client, lines: int = 80) -> str:
+        """Last lines of ComfyUI's own console log (the real traceback lives there)."""
+        try:
+            response = client.get("/internal/logs", timeout=5)
+            response.raise_for_status()
+            text = response.json()
+        except (httpx.HTTPError, ValueError):
+            return ""
+        if not isinstance(text, str):
+            return ""
+        return "\n".join(text.strip().splitlines()[-lines:])
+
+    def _execution_failure(self, client: httpx.Client, raw: str) -> GenerationError:
+        log = self.comfy_log_tail(client)
+        details = raw if not log else f"{raw}\n\n--- ComfyUI log (last lines) ---\n{log}"
+        # Classify on the error and the log together: the log often has the precise cause.
+        return failure_error(f"{raw}\n{log}", details[-6000:])
 
     def _download(self, client: httpx.Client, item: dict, dst: Path) -> Path:
         params = {"filename": item["filename"], "subfolder": item.get("subfolder", ""), "type": item.get("type", "output")}
@@ -482,7 +591,7 @@ class ComfyUIProvider(VideoProvider):
             response = client.get("/view", params=params)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise GenerationError("تعذّر تنزيل الناتج من محرك الذكاء الاصطناعي.", str(exc)) from exc
+            raise GenerationError("تعذّر تنزيل الناتج من محرك الذكاء الاصطناعي.", str(exc), stage="output") from exc
         dst.write_bytes(response.content)
         return dst
 
@@ -510,9 +619,9 @@ class ComfyUIProvider(VideoProvider):
                 ]
                 frames_to_mp4(self.ffmpeg_path, paths, request.model.fps, request.output_path)
             else:
-                raise GenerationError("لم يُرجع محرك الذكاء الاصطناعي أي فيديو. تأكد أن سير العمل يحتوي على عقدة حفظ.")
+                raise GenerationError("لم يُرجع محرك الذكاء الاصطناعي أي فيديو. تأكد أن سير العمل يحتوي على عقدة حفظ.", stage="output")
         except FFmpegError as exc:
-            raise GenerationError("فشل تحويل الناتج إلى MP4.", str(exc)) from exc
+            raise GenerationError("فشل تحويل الناتج إلى MP4.", str(exc), stage="encoding") from exc
 
 
 class _ProgressWatcher:

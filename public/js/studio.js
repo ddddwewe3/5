@@ -99,6 +99,7 @@
     let body = null;
     try { body = await response.json(); } catch { body = null; }
     if (!response.ok) {
+      console.error('[Vesion] API error', { path, status: response.status, body });
       const detail = body && body.detail;
       if (detail && typeof detail === 'object' && detail.message) {
         throw new ApiError(detail.message, response.status, detail.setup_steps || []);
@@ -182,7 +183,7 @@
   function engineSummary() {
     if (!state.loaded) return { state: '', text: 'جارٍ فحص محرك الذكاء الاصطناعي...' };
     if (!state.engineReachable) return { state: 'down', text: 'خادم توليد الفيديو غير متصل — اضغط لمعرفة طريقة التشغيل' };
-    const engine = state.health.engine;
+    const engine = state.health.engine_detail;
     if (!engine.available) return { state: 'off', text: 'محرك الذكاء الاصطناعي غير مشغّل — اضغط للإعداد' };
     const gpu = engine.details && engine.details.gpu;
     const ready = state.models.filter(m => m.availability.available && !m.is_demo).length;
@@ -223,9 +224,11 @@
         type: 'radio', name: 'model', value: model.id, checked: model.id === state.modelId,
         onchange: () => { state.modelId = model.id; state.resolution = null; renderForm(); saveForm(); },
       });
+      const corrupt = Object.values(model.availability ? model.availability.modes : {})
+        .some(m => m.missing.some(x => x.kind === 'corrupt'));
       const statusTag = model.is_demo
         ? el('span', { class: 'tag demo', text: 'ليس ذكاءً اصطناعيًا' })
-        : el('span', { class: `tag ${ready ? 'ok' : 'off'}`, text: ready ? 'جاهز' : 'غير مثبت' });
+        : el('span', { class: `tag ${ready ? 'ok' : 'off'}`, text: ready ? 'جاهز' : (corrupt ? 'ملف تالف' : 'غير مثبت') });
       list.append(el('label', { class: 'model-card' },
         input,
         el('span', { class: 'model-name' }, model.name, statusTag),
@@ -382,9 +385,9 @@
     const model = currentModel();
     if (!model) return 'لا يوجد نموذج يدعم هذا الوضع.';
     if (!modeAvailable(model, state.mode)) {
-      return state.health && !state.health.engine.available
+      return state.health && !state.health.engine_detail.available
         ? 'محرك الذكاء الاصطناعي غير مشغّل. التوليد متوقف حتى يتم تشغيله — لا نعرض نتائج وهمية.'
-        : `النموذج ${model.name} غير مثبت على المحرك. اضغط على حالة المحرك لمعرفة الملفات المطلوبة.`;
+        : `${model.name}: ${model.availability.message} — اضغط على حالة المحرك للتفاصيل.`;
     }
     const needed = MODE_IMAGES[state.mode];
     const images = state.images.slice(0, needed);
@@ -497,7 +500,18 @@
     const before = new Map(state.generations.map(g => [g.id, g.status]));
     state.generations = fresh;
     for (const g of fresh) {
-      if (before.get(g.id) && ACTIVE.has(before.get(g.id)) && g.status === 'completed') toast('اكتمل فيديو جديد ✨');
+      const was = before.get(g.id);
+      if (was && ACTIVE.has(was) && g.status === 'completed') {
+        toast(g.notice ? 'اكتمل الفيديو بإعدادات أخف ✨' : 'اكتمل فيديو جديد ✨');
+        console.info('[Vesion] generation completed', { id: g.id, result: g.result, notice: g.notice, params: g.params });
+      }
+      if (was && ACTIVE.has(was) && g.status === 'failed') {
+        toast(`فشل التوليد: ${g.stage_label || ''}`);
+        // Full diagnostics for developers (open DevTools → Console).
+        console.error('[Vesion] generation failed', {
+          id: g.id, stage: g.stage, error: g.error, hint: g.hint, details: g.error_details, params: g.params, model: g.model,
+        });
+      }
     }
     state.currentIds = state.currentIds.filter(id => fresh.some(g => g.id === id));
     renderCurrent();
@@ -553,8 +567,10 @@
     } else {
       const failed = g.status === 'failed';
       media.append(el('div', { class: `state-overlay ${failed ? 'failed' : ''}` },
+        failed && g.stage_label ? el('span', { class: 'stage-chip', text: `فشل في مرحلة: ${g.stage_label}` }) : null,
         el('strong', { text: failed ? (g.error || 'فشل التوليد.') : 'تم إلغاء التوليد.' }),
-        failed && g.setup_steps && g.setup_steps.length ? el('small', { text: g.setup_steps[0] }) : null,
+        failed && (g.hint || (g.setup_steps && g.setup_steps[0]))
+          ? el('small', { text: `الحل المقترح: ${g.hint || g.setup_steps[0]}` }) : null,
       ));
     }
     return media;
@@ -735,7 +751,12 @@
         g.params.negative_prompt ? el('dd', { text: g.params.negative_prompt }) : null,
         el('dt', { text: 'التاريخ' }), el('dd', { text: new Date(g.created_at * 1000).toLocaleString('ar') }),
       ),
-      g.status === 'failed' && g.error ? el('div', { class: 'alert', text: g.error }) : null,
+      g.status === 'failed' && g.error ? el('div', { class: 'alert' },
+        g.stage_label ? el('div', { class: 'stage-chip', text: `المرحلة: ${g.stage_label}` }) : null,
+        el('strong', { text: g.error }),
+        g.hint ? el('p', { text: `الحل المقترح: ${g.hint}` }) : null) : null,
+      g.notice && g.status === 'completed' ? el('p', { class: 'hint', text: g.notice }) : null,
+      g.result ? el('p', { class: 'hint', text: `تم التحقق من الفيديو: ${g.result.width}×${g.result.height} · ${g.result.duration} ث · ${g.result.frames} إطار · ${(g.result.size_bytes / 1048576).toFixed(1)}MB` }) : null,
       g.status === 'failed' && g.error_details ? el('details', { class: 'error-details' },
         el('summary', { text: 'التفاصيل التقنية (أرسلها إذا طلبت المساعدة)' }),
         el('pre', { class: 'cmd', text: g.error_details })) : null,
@@ -756,7 +777,7 @@
       summary.textContent = state.engineDetail ? state.engineDetail.message : 'خادم توليد الفيديو غير متصل.';
       body.append(el('ol', { class: 'steps' }, (state.engineDetail ? state.engineDetail.steps : []).map(s => el('li', { text: s }))));
     } else {
-      const engine = state.health.engine;
+      const engine = state.health.engine_detail;
       summary.textContent = engine.available
         ? 'المحرك متصل. هذه حالة كل نموذج والملفات التي يحتاجها (كلها مجانية ومفتوحة المصدر):'
         : engine.message;

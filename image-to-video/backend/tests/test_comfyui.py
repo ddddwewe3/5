@@ -8,7 +8,7 @@ from PIL import Image
 
 from app.models_registry import load_registry
 from app.providers.comfyui import ComfyUIProvider, _ProgressWatcher, fill_workflow, find_missing, is_local_url
-from conftest import WAN21_FILES, WAN22_FILES, FakeComfyUI, comfy_client, upload, wait_for
+from conftest import LTX_FILES, WAN21_FILES, WAN22_FILES, FakeComfyUI, comfy_client, upload, wait_for
 
 
 def test_fill_workflow_keeps_types_and_substitutes_text():
@@ -80,7 +80,7 @@ def test_find_missing_reports_files_and_nodes():
 def test_model_availability_detects_installed_files(settings):
     fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES)
     with comfy_client(settings, fake) as client:
-        health = client.get("/api/health").json()["engine"]
+        health = client.get("/api/health").json()["engine_detail"]
         assert health["available"] is True
         assert health["details"]["gpu"] == {"has_gpu": True, "name": "cuda:0 NVIDIA RTX 4090",
                                             "type": "cuda", "vram_gb": 24.0}
@@ -104,13 +104,13 @@ def test_missing_node_asks_to_update_comfyui(settings):
 def test_cpu_only_comfyui_is_detected_and_refused(settings):
     fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, gpu=False)
     with comfy_client(settings, fake) as client:
-        engine = client.get("/api/health").json()["engine"]
+        engine = client.get("/api/health").json()["engine_detail"]
         assert engine["available"] is False
         assert "CPU" in engine["message"]
         assert client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).status_code == 503
     settings.allow_cpu_generation = True
     with comfy_client(settings, fake) as client:
-        assert client.get("/api/health").json()["engine"]["available"] is True
+        assert client.get("/api/health").json()["engine_detail"]["available"] is True
 
 
 def test_text_to_video_full_flow(settings):
@@ -282,3 +282,99 @@ def test_corrupted_model_file_is_explained(settings):
     assert done["status"] == "failed"
     assert "تالف" in done["error"] and "download_models.py" in done["error"]
     assert "header too small" in done["error_details"]
+
+
+OOM = "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB"
+
+
+def test_out_of_vram_retries_with_lower_resolution_and_reports_it(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, pending_polls=0, history_error=OOM, fail_first=1)
+    with comfy_client(settings, fake) as client:
+        file_id = upload(client).json()["file_id"]
+        gid = client.post("/api/generations", json={
+            "mode": "i2v", "prompt": "a man talking", "image_ids": [file_id], "resolution": "720p", "duration": 5,
+            "aspect_ratio": "16:9"}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "completed", done
+    assert done["success"] is True and done["stage"] is None
+    assert [q["6"]["inputs"]["width"] for q in fake.queued] == [1280, 832]  # 720p, then 480p
+    assert done["params"]["resolution"] == "480p" and done["params"]["width"] == 832
+    assert "ذاكرة كرت الشاشة لم تكفِ" in done["notice"] and "480p" in done["notice"]
+    assert done["result"]["frames"] >= 2 and done["result"]["width"] > 0
+    assert done["filename"].endswith(".mp4")
+
+
+def test_out_of_vram_everywhere_fails_honestly_with_stage(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, pending_polls=0, history_error=OOM)
+    with comfy_client(settings, fake) as client:
+        gid = client.post("/api/generations", json={"mode": "t2v", "prompt": "x", "resolution": "720p",
+                                                    "duration": 8}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "failed" and done["success"] is False
+    assert done["stage"] == "generation" and done["stage_label"] == "التوليد"
+    assert "VRAM" in done["error"] and done["hint"]
+    # 720p/8s -> 480p/8s -> 480p/3s: every attempt was a real request to the engine
+    sizes = [(q["6"]["inputs"]["width"], q["6"]["inputs"]["length"]) for q in fake.queued]
+    assert sizes == [(1280, 193), (832, 193), (832, 73)]
+    assert not (settings.output_dir / gid / "video.mp4").exists()
+
+
+def test_corrupted_model_falls_back_to_another_installed_model(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES | LTX_FILES, pending_polls=0, fail_first=1,
+                       history_error="SafetensorError: Error while deserializing header: header too small")
+    with comfy_client(settings, fake) as client:
+        gid = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "completed", done
+    assert done["model"] == "ltxv-2b"
+    assert fake.queued[1]["1"]["class_type"] == "CheckpointLoaderSimple"
+    assert "تعذّر تحميل النموذج" in done["notice"]
+
+
+def test_comfyui_log_is_attached_to_failures(settings):
+    log = "Traceback (most recent call last):\n  File \"nodes.py\"\nRuntimeError: mat1 and mat2 shapes cannot be multiplied"
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, pending_polls=0,
+                       history_error="RuntimeError: shapes", log_text=log)
+    with comfy_client(settings, fake) as client:
+        gid = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "failed"
+    assert "--- ComfyUI log" in done["error_details"] and "mat1 and mat2" in done["error_details"]
+
+
+def test_frozen_output_is_rejected_by_validation(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES, pending_polls=0, frozen=True)
+    with comfy_client(settings, fake) as client:
+        gid = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"}).json()["generations"][0]["id"]
+        done = wait_for(client, gid)
+    assert done["status"] == "failed" and done["success"] is False
+    assert done["stage"] == "validation"
+    assert "still image" in done["error_details"]
+    assert done["video_url"] is None
+
+
+def test_health_summary(settings):
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES)
+    with comfy_client(settings, fake) as client:
+        body = client.get("/api/health").json()
+    assert {k: body[k] for k in ("backend", "engine", "comfyui", "models")} == \
+        {"backend": "ok", "engine": "ok", "comfyui": "ok", "models": "ok"}
+    fake.gpu = False
+    with comfy_client(settings, fake) as client:
+        body = client.get("/api/health").json()
+    assert body["comfyui"] == "cpu_only" and body["engine"] == "unavailable"
+
+
+def test_corrupted_model_file_is_detected_before_generating(settings, tmp_path):
+    models = tmp_path / "comfy_models"
+    (models / "diffusion_models").mkdir(parents=True)
+    (models / "diffusion_models" / "wan2.2_ti2v_5B_fp16.safetensors").write_bytes(b"\x10\x00" + b"\0" * 100)
+    fake = FakeComfyUI(settings.workflows_dir, installed=WAN22_FILES)
+    fake.folder_paths = {"diffusion_models": [str(models / "diffusion_models")]}
+    with comfy_client(settings, fake) as client:
+        model = client.get("/api/models").json()["models"][0]["availability"]
+        response = client.post("/api/generations", json={"mode": "t2v", "prompt": "x"})
+    assert model["available"] is False
+    assert "تالفة" in model["message"] and "wan2.2_ti2v_5B_fp16.safetensors" in model["message"]
+    assert response.status_code == 503
+    assert fake.queued == []  # nothing was sent to ComfyUI

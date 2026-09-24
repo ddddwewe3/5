@@ -83,6 +83,26 @@ Open **http://localhost:3000/studio**. The status pill turns green when ComfyUI 
 
 ---
 
+## Windows: one-click install, start and diagnose
+
+| File | What it does |
+|---|---|
+| `install-windows.bat` | Once: installs ComfyUI + the Wan 2.2 model (checks/re-downloads corrupted files), the engine and the site |
+| `start-windows.bat` | Every time: updates the project (`git pull`), starts ComfyUI, the engine and the site, opens the studio |
+| `diagnose-windows.bat` | When generation fails: writes `diagnose-report.txt` (GPU, PyTorch/CUDA, ports, model file integrity, engine health, last errors, ComfyUI log) |
+
+### How failures are handled
+
+- Every failed generation records the **stage** (`upload`, `preprocessing`, `engine_connection`, `model_loading`,
+  `generation`, `encoding`, `validation`, `output`), an Arabic explanation, a suggested fix, and the technical
+  details including the last lines of ComfyUI's own log (`/internal/logs`).
+- **Out of GPU memory** → retried automatically with real, lighter settings: lower resolution, then shorter
+  duration, then another installed model. The notice says exactly what changed.
+- **Corrupted / unloadable model** → retried with another installed model.
+- A generation is `success: true` only after FFmpeg decoded the whole MP4 and confirmed a video stream,
+  valid resolution and duration, and that the frames actually change (not a still image).
+- `GET /api/health` → `{"backend": "ok", "engine": "ok", "comfyui": "ok", "models": "ok"}` (plus details).
+
 ## Studio features
 
 - Text-to-video, image-to-video (animate one image), first→last-frame (two images)

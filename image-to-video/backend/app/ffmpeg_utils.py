@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageSequence
+from PIL import Image, ImageChops, ImageSequence, ImageStat
 
 
 class FFmpegError(Exception):
@@ -186,3 +187,68 @@ def make_thumbnail(ffmpeg: str, video: Path, dst: Path, width: int = 480) -> Non
         if dst.is_file() and dst.stat().st_size > 0:
             return
     raise FFmpegError("Could not create thumbnail")
+
+
+class VideoValidationError(FFmpegError):
+    pass
+
+
+def probe_video(ffmpeg: str, path: Path, timeout: float = 300) -> dict:
+    """Validate a generated MP4 by decoding it completely with FFmpeg.
+
+    Returns {width, height, duration, frames, size_bytes, codec}. Raises VideoValidationError when
+    the file is missing/empty, has no video stream, cannot be decoded, is too short, or is frozen
+    (first and last frames identical — a still image, not a video).
+    """
+    if not path.is_file() or path.stat().st_size == 0:
+        raise VideoValidationError("Output file is missing or empty")
+    cmd = [ffmpeg, "-hide_banner", "-nostdin", "-i", str(path), "-map", "0:v:0", "-f", "null", "-"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        raise VideoValidationError(f"Could not decode video: {exc}") from exc
+    log = result.stderr
+    if result.returncode != 0:
+        raise VideoValidationError(log.strip()[-1500:] or "FFmpeg could not decode the file")
+    stream = re.search(r"Stream #\S+.*?Video: (\w+).*?, (\d{2,5})x(\d{2,5})", log)
+    if not stream:
+        raise VideoValidationError("No video stream found in the file")
+    duration_match = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", log)
+    duration = 0.0
+    if duration_match:
+        h, m, sec = duration_match.groups()
+        duration = int(h) * 3600 + int(m) * 60 + float(sec)
+    frames_match = re.findall(r"frame=\s*(\d+)", log)
+    frames = int(frames_match[-1]) if frames_match else 0
+    info = {
+        "codec": stream.group(1),
+        "width": int(stream.group(2)),
+        "height": int(stream.group(3)),
+        "duration": round(duration, 3),
+        "frames": frames,
+        "size_bytes": path.stat().st_size,
+    }
+    if info["width"] < 16 or info["height"] < 16:
+        raise VideoValidationError(f"Invalid resolution {info['width']}x{info['height']}")
+    if frames < 2 or duration < 0.2:
+        raise VideoValidationError(f"Video too short ({frames} frames, {duration:.2f}s)")
+    if _is_frozen(ffmpeg, path, duration):
+        raise VideoValidationError("First and last frames are identical: the output is a still image, not motion")
+    return info
+
+
+def _is_frozen(ffmpeg: str, path: Path, duration: float) -> bool:
+    with tempfile.TemporaryDirectory() as tmp:
+        first, last = Path(tmp) / "first.png", Path(tmp) / "last.png"
+        try:
+            run_ffmpeg(ffmpeg, ["-i", str(path), "-frames:v", "1", "-vf", "scale=64:-2", str(first)], timeout=60)
+            run_ffmpeg(ffmpeg, ["-ss", f"{max(0.0, duration - 0.15):.3f}", "-i", str(path), "-frames:v", "1",
+                                "-vf", "scale=64:-2", str(last)], timeout=60)
+        except FFmpegError:
+            return False  # decoding already succeeded; don't fail on the comparison itself
+        if not first.is_file() or not last.is_file():
+            return False
+        with Image.open(first) as a, Image.open(last) as b:
+            a, b = a.convert("L"), b.convert("L").resize(a.size)
+            diff = ImageStat.Stat(ImageChops.difference(a, b)).mean[0]
+        return diff < 0.05

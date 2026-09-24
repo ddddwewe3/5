@@ -36,7 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_generations_owner ON generations(owner, created_a
 CREATE INDEX IF NOT EXISTS idx_generations_status ON generations(status, created_at);
 """
 
-JSON_FIELDS = {"params", "setup_steps"}
+JSON_FIELDS = {"params", "setup_steps", "result"}
+# Columns added after the first release; existing databases are migrated on startup.
+MIGRATIONS = {"error_stage": "TEXT", "result": "TEXT"}
 ACTIVE = ("queued", "running")
 
 
@@ -49,6 +51,10 @@ class GenerationStore:
         with self._lock:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.executescript(SCHEMA)
+            existing = {row["name"] for row in self._conn.execute("PRAGMA table_info(generations)")}
+            for column, kind in MIGRATIONS.items():
+                if column not in existing:
+                    self._conn.execute(f"ALTER TABLE generations ADD COLUMN {column} {kind}")
 
     def close(self) -> None:
         with self._lock:
@@ -61,7 +67,7 @@ class GenerationStore:
             return None
         data = dict(row)
         for key in JSON_FIELDS:
-            data[key] = json.loads(data[key]) if data.get(key) else ([] if key == "setup_steps" else {})
+            data[key] = json.loads(data[key]) if data.get(key) else ([] if key == "setup_steps" else ({} if key == "params" else None))
         return data
 
     # -- writes -----------------------------------------------------------

@@ -20,8 +20,16 @@ FILE_INPUTS = {"unet_name", "clip_name", "vae_name", "ckpt_name"}
 
 
 def make_image_bytes(fmt: str = "PNG", size=(320, 240), color=(200, 120, 60)) -> bytes:
+    """A photo-like test image with detail (a flat color would make any zoom look frozen)."""
+    from PIL import ImageDraw
+
+    img = Image.new("RGB", size, color)
+    draw = ImageDraw.Draw(img)
+    for i in range(0, size[0], 16):
+        draw.line([(i, 0), (size[0] - i, size[1])], fill=((i * 7) % 255, 255 - color[1], (i * 3) % 255), width=3)
+    draw.ellipse([size[0] // 4, size[1] // 4, size[0] * 3 // 4, size[1] * 3 // 4], outline=(255, 255, 255), width=6)
     buffer = io.BytesIO()
-    Image.new("RGB", size, color).save(buffer, format=fmt)
+    img.save(buffer, format=fmt)
     return buffer.getvalue()
 
 
@@ -30,6 +38,17 @@ def animated_webp(frames=6, size=(96, 160)) -> bytes:
     buffer = io.BytesIO()
     images[0].save(buffer, format="WEBP", save_all=True, append_images=images[1:], duration=42, loop=0)
     return buffer.getvalue()
+
+
+def frozen_webp(frames=6, size=(96, 160)) -> bytes:
+    """Frames that differ imperceptibly: a still image disguised as a video."""
+    images = [Image.new("RGB", size, (120, 100, 150 + (i % 2))) for i in range(frames)]
+    buffer = io.BytesIO()
+    images[0].save(buffer, format="WEBP", save_all=True, append_images=images[1:], duration=42, loop=0, lossless=True)
+    return buffer.getvalue()
+
+
+LTX_FILES = {"ltx-video-2b-v0.9.5.safetensors", "t5xxl_fp16.safetensors"}
 
 
 @pytest.fixture
@@ -70,13 +89,18 @@ class FakeComfyUI:
 
     def __init__(self, workflows_dir: Path, installed: set[str] | None = None, gpu: bool = True,
                  fail_prompt: bool = False, history_error: str | None = None, pending_polls: int = 1,
-                 never_finish: bool = False, missing_nodes: set[str] | None = None):
+                 never_finish: bool = False, missing_nodes: set[str] | None = None,
+                 fail_first: int | None = None, log_text: str = "", frozen: bool = False):
         self.installed = installed if installed is not None else set()
         self.gpu = gpu
         self.fail_prompt = fail_prompt
         self.history_error = history_error
         self.pending_polls = pending_polls
         self.never_finish = never_finish
+        self.fail_first = fail_first  # history_error only for the first N prompts (None = all)
+        self.log_text = log_text
+        self.folder_paths: dict = {}
+        self.frozen = frozen
         self.uploaded: list[str] = []
         self.queued: list[dict] = []
         self.interrupted = False
@@ -128,7 +152,8 @@ class FakeComfyUI:
             if self.never_finish or self.pending_polls > 0:
                 self.pending_polls -= 1
                 return httpx.Response(200, json={})
-            if self.history_error:
+            failing = self.fail_first is None or int(pid.split("-")[1]) <= self.fail_first
+            if self.history_error and failing:
                 return httpx.Response(200, json={pid: {"status": {"status_str": "error", "completed": False,
                                                                    "messages": [["execution_error", {"exception_message": self.history_error}]]},
                                                         "outputs": {}}})
@@ -138,7 +163,11 @@ class FakeComfyUI:
                                    "animated": [True]}},
             }})
         if path == "/view":
-            return httpx.Response(200, content=animated_webp())
+            return httpx.Response(200, content=frozen_webp() if self.frozen else animated_webp())
+        if path == "/internal/folder_paths":
+            return httpx.Response(200, json=self.folder_paths)
+        if path == "/internal/logs":
+            return httpx.Response(200, json=self.log_text)
         return httpx.Response(404)
 
 

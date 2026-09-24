@@ -4,3 +4,4 @@ data/orders.json
 .playwright-mcp/
 __pycache__/
 *.pyc
+diagnose-report.txt

@@ -13,8 +13,8 @@ def test_health_reports_engine_unavailable_with_setup_steps(client):
     body = client.get("/api/health").json()
     assert body["status"] == "ok"
     assert body["free"] is True
-    assert body["engine"]["available"] is False
-    assert body["engine"]["setup_steps"], "setup instructions must be returned instead of crashing"
+    assert body["engine_detail"]["available"] is False
+    assert body["engine_detail"]["setup_steps"], "setup instructions must be returned instead of crashing"
     assert body["demo_mode"] is False
     assert body["providers"]["mock"]["available"] is False
 

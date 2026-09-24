@@ -290,3 +290,6 @@ pre.cmd{direction:ltr; text-align:left; background:var(--background); border:1px
 .error-details{margin-top:10px; font-size:.8rem}
 .error-details summary{cursor:pointer; color:var(--muted-foreground)}
 .error-details pre{white-space:pre-wrap; word-break:break-word; max-height:220px}
+.stage-chip{display:inline-block; font-size:.72rem; font-weight:800; padding:3px 10px; border-radius:999px; background:oklch(70% .19 25 / .18); color:oklch(85% .1 25); margin-bottom:4px}
+.alert .stage-chip{margin-bottom:6px}
+.alert p{margin-top:6px; color:oklch(88% .04 25)}

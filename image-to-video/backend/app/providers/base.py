@@ -62,8 +62,15 @@ class ModelAvailability:
     setup_steps: list[str] = field(default_factory=list)
 
 
+# Where a generation failed. Shown to the user and returned by the API.
+STAGES = ("upload", "preprocessing", "engine_connection", "model_loading", "generation",
+          "encoding", "validation", "output")
+
+
 class ProviderUnavailable(Exception):
     """The engine is not installed / not reachable. Message is Arabic and user-facing."""
+
+    stage = "engine_connection"
 
     def __init__(self, message: str, setup_steps: list[str] | None = None):
         super().__init__(message)
@@ -72,12 +79,27 @@ class ProviderUnavailable(Exception):
 
 
 class GenerationError(Exception):
-    """Generation failed. Message is Arabic and user-facing."""
+    """Generation failed. Message is Arabic and user-facing; `stage` says where it failed."""
 
-    def __init__(self, message: str, details: str = ""):
+    def __init__(self, message: str, details: str = "", stage: str = "generation"):
         super().__init__(message)
         self.message = message
         self.details = details
+        self.stage = stage
+
+
+class OutOfVRAMError(GenerationError):
+    """The GPU ran out of memory. The worker retries with lighter settings."""
+
+    def __init__(self, message: str, details: str = ""):
+        super().__init__(message, details, stage="generation")
+
+
+class ModelLoadError(GenerationError):
+    """A model file could not be loaded (missing, corrupted, incompatible)."""
+
+    def __init__(self, message: str, details: str = ""):
+        super().__init__(message, details, stage="model_loading")
 
 
 class GenerationCancelled(Exception):

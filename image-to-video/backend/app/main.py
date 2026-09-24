@@ -40,6 +40,18 @@ OWNER_RE = re.compile(r"^[a-f0-9]{32}$")
 LOCAL_OWNER = "local"
 MAX_ACTIVE_PER_OWNER = 8
 MAX_QUEUE = 100
+STAGE_INFO = {
+    "upload": ("رفع الصورة", "أعد رفع الصورة وحاول مرة أخرى."),
+    "preprocessing": ("تجهيز الطلب", "ملف سير العمل أو الإعدادات غير صالحة. حدّث المشروع (git pull) وأعد تشغيله."),
+    "engine_connection": ("الاتصال بمحرك الذكاء الاصطناعي",
+                          "تأكد أن نافذة ComfyUI مفتوحة وتعمل، ثم أعد المحاولة."),
+    "model_loading": ("تحميل النموذج",
+                      "شغّل install-windows.bat مرة أخرى ليفحص ملفات النموذج ويعيد تنزيل التالف منها."),
+    "generation": ("التوليد", "جرّب دقة 480p ومدة 3 ثوانٍ، وأغلق البرامج التي تستخدم كرت الشاشة."),
+    "encoding": ("تحويل الفيديو إلى MP4", "أعد المحاولة. إذا تكرر الخطأ أرسل التفاصيل التقنية."),
+    "validation": ("التحقق من الفيديو", "الناتج لم يكن فيديو صالحًا. أعد التوليد."),
+    "output": ("استلام الناتج", "تأكد أن سير العمل يحتوي على عقدة حفظ، ثم أعد المحاولة."),
+}
 DEMO_NOTICE = "عرض تجريبي: هذا عرض شرائح بحركة Ken Burns وليس فيديو مولّدًا بالذكاء الاصطناعي."
 
 
@@ -197,8 +209,18 @@ def create_app(settings: Settings | None = None, comfy_transport=None, use_webso
         model = registry.get(generation["model"])
         completed = generation["status"] == "completed"
         has_thumb = completed and (generation_dir(settings.output_dir, gid) / "thumb.jpg").is_file()
+        stage = generation.get("error_stage")
+        label, hint = STAGE_INFO.get(stage, (None, None)) if generation["status"] == "failed" else (None, None)
+        result = generation.get("result") or None
         return {
             "id": gid,
+            # True only when the MP4 exists and passed FFmpeg validation.
+            "success": completed and result is not None,
+            "stage": stage if generation["status"] == "failed" else None,
+            "stage_label": label,
+            "hint": hint,
+            "result": result,
+            "filename": result.get("filename") if result else None,
             "batch_id": generation["batch_id"],
             "model": generation["model"],
             "model_name": model.name if model else generation["model"],
@@ -306,10 +328,18 @@ def create_app(settings: Settings | None = None, comfy_transport=None, use_webso
     def health():
         comfy = providers["comfyui"].status()
         demo = providers["mock"].status()
+        models_ok = any(providers[m.provider].model_status(m).available for m in registry.models if not m.is_demo) \
+            if comfy.available else False
+        comfy_state = "ok" if comfy.available else (
+            "cpu_only" if "CPU" in comfy.message else ("blocked_remote" if "ALLOW_REMOTE" in comfy.message else "down"))
         return {
+            "backend": "ok",
+            "engine": "ok" if comfy.available and models_ok else "unavailable",
+            "comfyui": comfy_state,
+            "models": "ok" if models_ok else "missing",
             "status": "ok",
-            "engine": {"available": comfy.available, "message": comfy.message,
-                       "setup_steps": comfy.setup_steps, "details": comfy.details},
+            "engine_detail": {"available": comfy.available, "message": comfy.message,
+                              "setup_steps": comfy.setup_steps, "details": comfy.details},
             "demo_mode": settings.enable_demo_mode,
             "free": True,
             "max_upload_mb": settings.max_upload_mb,
